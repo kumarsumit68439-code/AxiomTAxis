@@ -4,6 +4,7 @@ import * as welcome from './bots/welcome.js';
 import * as ai from './bots/ai.js';
 import * as music from './bots/music.js';
 import { storageMode } from './bots/util.js';
+import { startStats } from './stats.js';
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -15,6 +16,10 @@ const BASE = [G.Guilds, G.GuildVoiceStates];
 // Privileged intents: must be enabled in Discord Developer Portal > Bot.
 const PRIVILEGED = [G.GuildMembers, G.GuildMessages, G.MessageContent];
 const ALL = [...simple.commands, ...welcome.commands, ...ai.commands, ...music.commands];
+
+let current = null;
+let mode = 'starting';
+startStats(() => ({ client: current, mode }));
 
 async function boot(full) {
   const client = new Client({ intents: full ? [...BASE, ...PRIVILEGED] : BASE });
@@ -42,6 +47,8 @@ async function boot(full) {
     try { await client.destroy(); } catch {}
     throw e;
   }
+  current = client;
+  mode = full ? 'full' : 'basic';
   return client;
 }
 
