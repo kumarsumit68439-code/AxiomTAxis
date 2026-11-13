@@ -19,7 +19,9 @@ export const commands = [
 
 const HELP = [
   '**AxiomTAxis**',
-  '`/play song` - YouTube music in your voice channel, `/stop`',
+  '`/play song` - YouTube music (optional: channel to join by ID/select)',
+  '`/join #vc` - Join a voice channel by ID or selection',
+  '`/stop` - Stop music and leave',
   '`/c name` - run a custom command (`/command add|remove|list` to manage)',
   '`/ai channel #chat` - AI replies in that channel without mention (`/ai model`, `/ai prompt`, `/ai off`)',
   '`/welcome set #channel` - welcome new members',
