@@ -3,99 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AxiomTAxis - 24/7 Discord Bot Hosting</title>
+<title>AxiomTAxis - Discord bot</title>
 <style>
-:root{--bg:#0b0d14;--card:#141826;--line:#252b40;--txt:#e8ebf7;--mut:#8d95b3;--acc:#6c7bff;--ok:#2ecc71;--bad:#ff5c6c}
+:root{--bg:#0b0d14;--card:#141826;--line:#252b40;--txt:#e8ebf7;--mut:#8d95b3;--acc:#6c7bff}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
 header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--line)}
 .logo{font-weight:800;font-size:20px}.logo span{color:var(--acc)}
 main{max-width:980px;margin:0 auto;padding:24px}
-.hero{text-align:center;padding:48px 0 24px}.hero h1{font-size:40px;margin:0 0 12px}.hero p{color:var(--mut);max-width:620px;margin:0 auto 20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:24px 0}
+.hero{text-align:center;padding:48px 0 24px}.hero h1{font-size:40px;margin:0 0 12px}.hero p{color:var(--mut);max-width:640px;margin:0 auto 22px}
+.btn{display:inline-block;background:var(--acc);color:#fff;text-decoration:none;border-radius:10px;padding:12px 22px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:24px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
 .card h3{margin:0 0 6px}.card p{margin:0;color:var(--mut);font-size:14px}
-button,.btn{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer}
-button.sec{background:#222942}button.bad{background:var(--bad)}
-input,select,textarea{width:100%;background:#0e1220;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0 12px;font:inherit}
-label{font-size:13px;color:var(--mut)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.bot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.badge{padding:3px 10px;border-radius:99px;font-size:12px;background:#222942}.badge.online{background:#12351f;color:var(--ok)}.badge.error{background:#3b1820;color:var(--bad)}
-.msg{color:var(--bad);font-size:14px;min-height:20px}
-[hidden]{display:none!important}
-small{color:var(--mut)}
+code{background:#0e1220;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+h2{margin-top:36px}.chips span{display:inline-block;background:#222942;border-radius:99px;padding:4px 12px;margin:3px;font-size:13px}
+.warn{background:#3b1820;color:#ff8a97;padding:10px 16px;text-align:center}
+footer{text-align:center;color:var(--mut);padding:30px;font-size:13px}
 </style>
 </head>
 <body>
+<div id="warn" class="warn" hidden>Invite link not set: add DISCORD_CLIENT_ID in Netlify env and redeploy.</div>
 <header>
   <div class="logo">Axiom<span>TAxis</span></div>
-  <div class="row"><span id="who"></span><button id="logout" class="sec" hidden>Logout</button></div>
+  <a class="btn invite" href="#" target="_blank" rel="noopener">Add to Discord</a>
 </header>
 <main>
-  <section id="landing">
-    <div class="hero">
-      <h1>24/7 Discord Bot Hosting</h1>
-      <p>Apna bot token daalo, type chuno, aur bot Railway pe 24/7 online rahega. Simple, Welcome, AI aur Music bots.</p>
-      <button id="cta">Get started</button>
-    </div>
-    <div class="grid">
-      <div class="card"><h3>Simple Bot</h3><p>Sirf slash commands. Apne custom commands banao.</p></div>
-      <div class="card"><h3>Welcome Bot</h3><p>Naye member aate hi welcome message.</p></div>
-      <div class="card"><h3>AI Bot</h3><p>Chat channel me bina mention ke AI reply. Saare providers aur models.</p></div>
-      <div class="card"><h3>Music Bot</h3><p>YouTube search, VC me play, mini player buttons ke saath.</p></div>
-    </div>
-  </section>
-
-  <section id="auth" hidden>
-    <div class="card" style="max-width:420px;margin:0 auto">
-      <h3>Login / Sign up</h3>
-      <label>Email</label><input id="email" type="email" autocomplete="email">
-      <label>Password</label><input id="pass" type="password" autocomplete="current-password">
-      <div class="row"><button id="login">Login</button><button id="signup" class="sec">Sign up</button></div>
-      <div class="msg" id="authmsg"></div>
-    </div>
-  </section>
-
-  <section id="dash" hidden>
-    <div class="card">
-      <h3>Create bot</h3>
-      <form id="botform">
-        <label>Bot name</label><input name="name" required maxlength="40">
-        <label>Bot type</label>
-        <select name="type">
-          <option value="simple">Simple (commands)</option>
-          <option value="welcome">Welcome</option>
-          <option value="ai">AI chat</option>
-          <option value="music">Music</option>
-        </select>
-        <label>Discord bot token</label><input name="token" type="password" required autocomplete="off">
-
-        <div data-type="simple">
-          <label>Custom commands (har line: <code>name|reply</code>). /ping aur /help by default.</label>
-          <textarea name="commands" rows="4" placeholder="rules|Server rules: be nice!"></textarea>
-        </div>
-        <div data-type="welcome" hidden>
-          <label>Welcome channel ID (khali = system channel)</label><input name="wchannel">
-          <label>Message ({user} {username} {server} {count})</label>
-          <input name="wmsg" value="Welcome {user} to {server}! Tum {count} member ho.">
-        </div>
-        <div data-type="ai" hidden>
-          <label>AI chat channel ID (khali = channel named ai-chat)</label><input name="achannel">
-          <label>Provider</label><select name="provider"></select>
-          <label>Model</label><select name="model"></select>
-          <label>System prompt</label><textarea name="sys" rows="2">You are a helpful Discord assistant. Keep replies concise.</textarea>
-        </div>
-        <div data-type="music" hidden><small>Use /play song name in a text chat while you are in a voice channel.</small></div>
-
-        <button type="submit">Create &amp; host</button>
-        <div class="msg" id="formmsg"></div>
-      </form>
-    </div>
-    <h3>Your bots</h3>
-    <div id="bots"></div>
-  </section>
+  <div class="hero">
+    <h1>One bot. Music, AI, welcome and commands.</h1>
+    <p>AxiomTAxis 24/7 online rehta hai. Apne server me invite karo aur <code>/help</code> se shuru karo.</p>
+    <a class="btn invite" href="#" target="_blank" rel="noopener">Invite bot to your server</a>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Music</h3><p><code>/play song name</code> likho. Bot aapke VC me aata hai aur chat me mini player dikhata hai: Pause, Resume, seek aur Stop buttons.</p></div>
+    <div class="card"><h3>AI chat</h3><p><code>/ai channel #chat</code> set karo. Us channel me bina mention ke har message ka AI reply milta hai.</p></div>
+    <div class="card"><h3>Welcome</h3><p><code>/welcome set #channel</code> se naye members ko welcome message.</p></div>
+    <div class="card"><h3>Custom commands</h3><p><code>/command add</code> se apne commands banao, <code>/c name</code> se chalao.</p></div>
+  </div>
+  <h2>AI providers</h2>
+  <div class="chips" id="providers"></div>
+  <p style="color:var(--mut);font-size:14px">Setup commands ke liye Manage Server permission chahiye. Model badalne ke liye <code>/ai model</code>.</p>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<footer>AxiomTAxis</footer>
 <script src="config.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>

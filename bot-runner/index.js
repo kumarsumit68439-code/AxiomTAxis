@@ -1,83 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
-import { Client, GatewayIntentBits as G } from 'discord.js';
-import { attachSimple } from './bots/simple.js';
-import { attachWelcome } from './bots/welcome.js';
-import { attachAI } from './bots/ai.js';
-import { attachMusic } from './bots/music.js';
+import { Client, GatewayIntentBits as G, Events, ActivityType } from 'discord.js';
+import * as simple from './bots/simple.js';
+import * as welcome from './bots/welcome.js';
+import * as ai from './bots/ai.js';
+import * as music from './bots/music.js';
+import { storageMode } from './bots/util.js';
 
-const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY');
+const token = process.env.DISCORD_TOKEN;
+if (!token) {
+  console.error('DISCORD_TOKEN is not set');
   process.exit(1);
 }
-const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
-const INTENTS = {
-  simple: [G.Guilds],
-  welcome: [G.Guilds, G.GuildMembers],
-  ai: [G.Guilds, G.GuildMessages, G.MessageContent],
-  music: [G.Guilds, G.GuildVoiceStates]
-};
-const HANDLERS = { simple: attachSimple, welcome: attachWelcome, ai: attachAI, music: attachMusic };
+const client = new Client({
+  intents: [G.Guilds, G.GuildMembers, G.GuildMessages, G.MessageContent, G.GuildVoiceStates]
+});
 
-const running = new Map(); // id -> { client, stamp }
+simple.attach(client);
+welcome.attach(client);
+ai.attach(client);
+music.attach(client);
 
-async function setStatus(id, status, detail = null) {
-  await sb.from('bots').update({ status, status_detail: detail }).eq('id', id);
-}
+const ALL = [...simple.commands, ...welcome.commands, ...ai.commands, ...music.commands];
 
-async function stop(id) {
-  const r = running.get(id);
-  running.delete(id);
-  if (r && r.client) { try { await r.client.destroy(); } catch {} }
-}
-
-async function start(b, stamp) {
-  const client = new Client({ intents: INTENTS[b.type] });
-  running.set(b.id, { client, stamp });
-  client.on('error', (e) => console.error(b.name, 'client error', e.message));
+client.once(Events.ClientReady, async (c) => {
   try {
-    HANDLERS[b.type](client, b.config || {});
-    await client.login(b.token);
-    await setStatus(b.id, 'online', client.user.tag);
-    console.log('started', b.name, b.type);
+    await c.application.commands.set(ALL);
+    console.log('Registered', ALL.length, 'global commands');
   } catch (e) {
-    console.error('failed', b.name, e.message);
-    try { await client.destroy(); } catch {}
-    running.set(b.id, { client: null, stamp });
-    await setStatus(b.id, 'error', String(e.message).slice(0, 200));
+    console.error('command registration failed', e.message);
   }
-}
+  c.user.setActivity('/help', { type: ActivityType.Listening });
+  console.log('Online as', c.user.tag, '| settings storage:', storageMode, '| servers:', c.guilds.cache.size);
+});
 
-let syncing = false;
-async function sync() {
-  if (syncing) return;
-  syncing = true;
-  try {
-    const { data, error } = await sb.from('bots').select('*');
-    if (error) throw error;
-    const live = new Map(data.filter((b) => b.enabled).map((b) => [b.id, b]));
-    for (const id of [...running.keys()]) {
-      if (!live.has(id)) {
-        await stop(id);
-        await setStatus(id, 'offline');
-      }
-    }
-    for (const b of live.values()) {
-      const stamp = b.type + '|' + b.token + '|' + JSON.stringify(b.config);
-      const r = running.get(b.id);
-      if (r && r.stamp === stamp) continue;
-      if (r) await stop(b.id);
-      await start(b, stamp);
-    }
-  } catch (e) {
-    console.error('sync error', e.message);
-  } finally {
-    syncing = false;
-  }
-}
-
-await sync();
-setInterval(sync, 15000);
+client.on('error', (e) => console.error('client error', e.message));
 process.on('unhandledRejection', (e) => console.error('unhandledRejection', e));
-console.log('AxiomTAxis bot-runner running');
+
+await client.login(token);
