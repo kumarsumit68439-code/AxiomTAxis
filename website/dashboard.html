@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#05060a">
+<title>Dashboard — AxiomTAxis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand">
+      <span class="logo">A</span>
+      <span>AxiomTAxis</span>
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <a href="#overview" class="nav-item active" data-panel="overview"><span class="ico">🏠</span> Overview</a>
+      <a href="#ai" class="nav-item" data-panel="ai"><span class="ico">🧠</span> AI</a>
+      <a href="#welcome" class="nav-item" data-panel="welcome"><span class="ico">➡️</span> Join & Left</a>
+      <a href="#counting" class="nav-item" data-panel="counting"><span class="ico">🔢</span> Counting</a>
+      <a href="#level" class="nav-item" data-panel="level"><span class="ico">⭐</span> Level</a>
+      <a href="#ticket" class="nav-item" data-panel="ticket"><span class="ico">🎫</span> Ticket</a>
+      <a href="#verification" class="nav-item" data-panel="verification"><span class="ico">✅</span> Verification</a>
+      <a href="#logging" class="nav-item" data-panel="logging"><span class="ico">📋</span> Logging</a>
+      <a href="#music" class="nav-item" data-panel="music"><span class="ico">🎵</span> Music</a>
+      <a href="#trigger" class="nav-item" data-panel="trigger"><span class="ico">⚡</span> Trigger</a>
+      <a href="#suggestions" class="nav-item" data-panel="suggestions"><span class="ico">💡</span> Suggestions</a>
+      <a href="#yt" class="nav-item" data-panel="yt"><span class="ico">▶️</span> YT Notification</a>
+      <a href="#memes" class="nav-item" data-panel="memes"><span class="ico">😄</span> Auto Memes</a>
+      <a href="#automod" class="nav-item" data-panel="automod"><span class="ico">🤖</span> Auto Moderation</a>
+      <a href="#antinuke" class="nav-item" data-panel="antinuke"><span class="ico">🛡️</span> Anti Nuke</a>
+      <a href="#antiraid" class="nav-item" data-panel="antiraid"><span class="ico">🛡️</span> Anti Raid</a>
+      <a href="#uptime" class="nav-item" data-panel="uptime"><span class="ico">⏱️</span> Uptime</a>
+    </nav>
+    <div class="side-foot">
+      <a href="/" class="back">← Website</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <div class="top-title" id="topTitle">Overview</div>
+      <div class="top-right">
+        <select id="guildSelect" class="guild-select">
+          <option value="">Select server…</option>
+        </select>
+        <button class="btn save-btn" id="saveBtn">Save</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="panel active" id="panel-overview">
+        <h2>Server Overview</h2>
+        <p class="muted">Select a server, then open any module from the sidebar. Settings save to the same store the bot uses (after OAuth is connected).</p>
+        <div class="cards">
+          <div class="card"><b data-ov="servers">—</b><span>Servers (bot)</span></div>
+          <div class="card"><b data-ov="mode">—</b><span>Mode</span></div>
+          <div class="card"><b data-ov="ping">—</b><span>Ping</span></div>
+          <div class="card"><b data-ov="uptime">—</b><span>Uptime</span></div>
+        </div>
+        <div class="note">
+          <strong>Website-controlled:</strong> AI model/prompt and Welcome/Leave message text are set only from this dashboard (not Discord commands).
+        </div>
+      </section>
+
+      <section class="panel" id="panel-ai">
+        <h2>AI Assistant</h2>
+        <p class="muted">Channel: <code>/ai channel</code> in Discord. Model & system prompt only from here.</p>
+        <label>Provider</label>
+        <select id="ai-provider"></select>
+        <label>Model</label>
+        <select id="ai-model"></select>
+        <label>System prompt</label>
+        <textarea id="ai-prompt" rows="4" placeholder="You are a helpful Discord assistant…"></textarea>
+        <p class="hint">After Save + live API, bot uses these for that server’s AI channel.</p>
+      </section>
+
+      <section class="panel" id="panel-welcome">
+        <h2>Join & Left</h2>
+        <p class="muted">Channels via Discord <code>/welcome set</code> / <code>leave</code>. Message text only from here.</p>
+        <label>Welcome message</label>
+        <textarea id="welcome-msg" rows="3" placeholder="Welcome {user} to {server}! You are member #{count}."></textarea>
+        <label>Leave message</label>
+        <textarea id="leave-msg" rows="3" placeholder="{username} left {server}. Members: {count}"></textarea>
+        <p class="hint">Placeholders: <code>{user}</code> <code>{username}</code> <code>{server}</code> <code>{count}</code></p>
+      </section>
+
+      <section class="panel" id="panel-counting">
+        <h2>Counting</h2>
+        <p class="muted"><code>/counting set #channel</code> · <code>/counting reset</code> · <code>/counting status</code></p>
+        <div class="info-box">Sequential numbers in channel. Wrong / same user twice → reset. Milestone every 100.</div>
+      </section>
+
+      <section class="panel" id="panel-level">
+        <h2>Level / XP</h2>
+        <p class="muted"><code>/level set</code> · <code>/level rank</code> · <code>/level leaderboard</code></p>
+        <div class="info-box">XP 15–25 per message (1 min cooldown). Level-up in configured channel.</div>
+      </section>
+
+      <section class="panel" id="panel-ticket">
+        <h2>Ticket</h2>
+        <p class="muted"><code>/ticket setup channel:#support category:… support_role:@Staff</code></p>
+        <div class="info-box">Panel opens private ticket; Close deletes after 5s.</div>
+      </section>
+
+      <section class="panel" id="panel-verification">
+        <h2>Verification</h2>
+        <p class="muted"><code>/verification setup channel:#verify role:@Verified</code></p>
+        <div class="info-box">Verify button grants role. Bot role must be above verified role.</div>
+      </section>
+
+      <section class="panel" id="panel-logging">
+        <h2>Logging</h2>
+        <p class="muted"><code>/logging set #logs</code></p>
+        <div class="info-box">Join/leave, message delete, bulk delete logs.</div>
+      </section>
+
+      <section class="panel" id="panel-music">
+        <h2>Music</h2>
+        <p class="muted"><code>/play</code> · <code>/join</code> · <code>/stop</code></p>
+        <div class="info-box">YouTube + mini player. Join by channel select/ID.</div>
+      </section>
+
+      <section class="panel" id="panel-trigger">
+        <h2>Trigger / Custom Commands</h2>
+        <p class="muted"><code>/command add</code> · <code>/c name</code></p>
+        <div class="info-box">Text triggers managed via Discord commands.</div>
+      </section>
+
+      <section class="panel" id="panel-suggestions">
+        <h2>Suggestions</h2>
+        <div class="coming">Coming soon — suggestion channel + approve/deny.</div>
+      </section>
+
+      <section class="panel" id="panel-yt">
+        <h2>YT Notification</h2>
+        <div class="coming">Coming soon — YouTube upload alerts.</div>
+      </section>
+
+      <section class="panel" id="panel-memes">
+        <h2>Auto Memes</h2>
+        <div class="coming">Coming soon — auto meme posts.</div>
+      </section>
+
+      <section class="panel" id="panel-automod">
+        <h2>Auto Moderation</h2>
+        <div class="coming">Coming soon — spam / invite / mention filters.</div>
+      </section>
+
+      <section class="panel" id="panel-antinuke">
+        <h2>Anti Nuke</h2>
+        <div class="coming">Coming soon — mass action protection.</div>
+      </section>
+
+      <section class="panel" id="panel-antiraid">
+        <h2>Anti Raid</h2>
+        <div class="coming">Coming soon — join rate limits.</div>
+      </section>
+
+      <section class="panel" id="panel-uptime">
+        <h2>Uptime / Status</h2>
+        <p class="muted">Live stats from the bot.</p>
+        <div class="cards">
+          <div class="card"><b data-ov="uptime2">—</b><span>Uptime</span></div>
+          <div class="card"><b data-ov="ping2">—</b><span>Gateway ping</span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="models.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
