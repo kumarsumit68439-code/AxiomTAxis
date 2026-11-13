@@ -3,109 +3,252 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#07080d">
-<title>AxiomTAxis - Music, AI Chat and Welcome Discord Bot</title>
-<meta name="description" content="AxiomTAxis is a free Discord bot with YouTube music and a mini player, AI chat in any channel with no mention needed, welcome messages and custom commands.">
+<meta name="theme-color" content="#05060a">
+<title>AxiomTAxis — Free Discord Bot | Music, AI Chat & More</title>
+<meta name="description" content="AxiomTAxis is a free Discord bot with YouTube music, AI chat (no mention needed), welcome messages, custom commands and per-server settings. No premium. 100% free forever.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav class="nav" id="nav">
-  <a class="brand" href="#home"><span class="badge"><img data-avatar alt="" hidden><b>A</b></span>AxiomTAxis</a>
+  <a class="brand" href="#home">
+    <span class="logo-mark"><img data-avatar alt="" hidden><b>A</b></span>
+    <span class="brand-text">Axiom<span class="accent">TAxis</span></span>
+  </a>
   <div class="links" id="links">
-    <a href="#home">Home</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#docs">Docs</a><a href="#status">Status</a><a href="#support" class="support-link" hidden>Support</a>
-    <a class="btn small" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
+    <a href="#home">Home</a>
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#docs">Docs</a>
+    <a href="#status">Status</a>
+    <a href="#support" class="support-link" hidden>Support</a>
+    <a class="btn btn-sm" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
   </div>
   <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
 
 <header class="hero" id="home">
-  <div class="glow"></div>
-  <div class="pill"><i class="dot" data-dot></i><span data-pill>Checking status</span></div>
-  <div class="avatar"><img data-avatar alt="AxiomTAxis" hidden><b>A</b></div>
+  <div class="hero-glow"></div>
+  <div class="pill">
+    <i class="dot" data-dot></i>
+    <span data-pill>Checking status…</span>
+  </div>
+  <div class="hero-logo">
+    <div class="avatar-ring">
+      <div class="avatar"><img data-avatar alt="AxiomTAxis" hidden><b>A</b></div>
+    </div>
+  </div>
   <h1>Axiom<span class="grad">TAxis</span></h1>
-  <p class="lead">Free Discord bot with YouTube music, AI chat without mentions, welcome messages and custom commands. No premium, no paywall, every feature is free.</p>
+  <p class="lead">Free Discord bot with high-quality YouTube music, AI chat that needs no mention, welcome messages, custom commands and full per-server control. <strong>No premium. No paywall. Everything free.</strong></p>
   <div class="cta">
     <a class="btn" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
-    <a class="btn ghost" href="#docs">Read the docs</a>
+    <a class="btn ghost" href="#features">Explore features</a>
   </div>
-  <div class="chips"><span>Music</span><span>AI Chat</span><span>Welcome</span><span>Custom Commands</span><span>Per-server settings</span><span>100% Free</span></div>
+  <div class="chips">
+    <span>Music</span>
+    <span>AI Chat</span>
+    <span>Welcome</span>
+    <span>Custom Commands</span>
+    <span>Per-server settings</span>
+    <span class="chip-free">100% Free</span>
+  </div>
   <div class="stats">
-    <div><b data-stat="servers">-</b><small>Servers</small></div>
-    <div><b data-stat="users">-</b><small>Members reached</small></div>
-    <div><b data-stat="ping">-</b><small>Gateway ping</small></div>
-    <div><b data-stat="uptime">-</b><small>Uptime</small></div>
+    <div class="stat">
+      <b data-stat="servers">—</b>
+      <small>Servers</small>
+    </div>
+    <div class="stat">
+      <b data-stat="users">—</b>
+      <small>Members reached</small>
+    </div>
+    <div class="stat">
+      <b data-stat="ping">—</b>
+      <small>Gateway ping</small>
+    </div>
+    <div class="stat">
+      <b data-stat="uptime">—</b>
+      <small>Uptime</small>
+    </div>
   </div>
 </header>
 
 <section class="sec" id="features">
-  <p class="eyebrow">Suite overview</p>
-  <h2>Everything free, in one bot</h2>
+  <p class="eyebrow">Complete Feature Suite</p>
+  <h2>Everything you need — free forever</h2>
+  <p class="sec-sub">One bot for music, AI, community tools and server control. No hidden tiers.</p>
   <div class="grid">
-    <article class="card reveal"><span class="tag">Music</span><h3>YouTube player</h3><p>Type <code>/play song name</code>. No URL needed. The bot joins your voice channel and posts a mini player with pause, resume, 10s seek and stop buttons plus a live progress bar.</p></article>
-    <article class="card reveal"><span class="tag">AI</span><h3>AI chat, no mention</h3><p>Pick a channel with <code>/ai channel</code> and the bot answers every message there. Choose from 8 providers and dozens of models, and set your own system prompt.</p></article>
-    <article class="card reveal"><span class="tag">Community</span><h3>Welcome messages</h3><p>Greet new members with your own text. Placeholders: user, username, server and member count.</p></article>
-    <article class="card reveal"><span class="tag">Utility</span><h3>Custom commands</h3><p>Create text commands for rules, links or FAQs with <code>/command add</code>, then run them with <code>/c name</code>.</p></article>
-    <article class="card reveal"><span class="tag">Control</span><h3>Per-server settings</h3><p>Every server has its own AI channel, model, prompt, welcome setup and commands. Only members with Manage Server can change them.</p></article>
-    <article class="card reveal"><span class="tag">Free</span><h3>No plans, no payments</h3><p>There is no premium tier. Add the bot and use everything.</p></article>
+    <article class="card reveal">
+      <span class="tag tag-music">Music</span>
+      <h3>YouTube Music Player</h3>
+      <p>Type <code>/play song name</code> — no URL required. Bot joins your voice channel and posts an interactive mini player with Pause, Resume, ±10s seek, Stop and a live progress bar.</p>
+    </article>
+    <article class="card reveal">
+      <span class="tag tag-ai">AI</span>
+      <h3>AI Chat (No Mention)</h3>
+      <p>Set a channel with <code>/ai channel</code>. The bot replies to every message there automatically. Choose from 8 providers and dozens of models. Custom system prompt supported.</p>
+    </article>
+    <article class="card reveal">
+      <span class="tag tag-community">Community</span>
+      <h3>Welcome Messages</h3>
+      <p>Greet new members in any channel with your own message. Placeholders: user, username, server name and member count. Enable or disable anytime.</p>
+    </article>
+    <article class="card reveal">
+      <span class="tag tag-utility">Utility</span>
+      <h3>Custom Commands</h3>
+      <p>Create text commands for rules, links or FAQs with <code>/command add</code>. Run them with <code>/c name</code>. Perfect for server info and quick replies.</p>
+    </article>
+    <article class="card reveal">
+      <span class="tag tag-control">Control</span>
+      <h3>Per-Server Settings</h3>
+      <p>Every server has its own AI channel, model, prompt, welcome setup and commands. Only members with Manage Server permission can change them.</p>
+    </article>
+    <article class="card reveal">
+      <span class="tag tag-free">Free</span>
+      <h3>No Plans, No Payments</h3>
+      <p>There is no premium tier and no paid features. Invite the bot once and use everything on every server. Built for communities, not for subscriptions.</p>
+    </article>
   </div>
-  <h3 class="sub">AI providers</h3>
-  <div class="chips" id="providers"></div>
+  <h3 class="sub">AI Providers Available</h3>
+  <div class="chips providers" id="providers"></div>
 </section>
 
 <section class="sec" id="how">
-  <p class="eyebrow">Getting started</p>
+  <p class="eyebrow">Getting Started</p>
   <h2>Up and running in 4 steps</h2>
   <div class="steps">
-    <div class="step reveal"><i>01</i><h3>Invite the bot</h3><p>Click Add to Discord and choose your server.</p></div>
-    <div class="step reveal"><i>02</i><h3>Set an AI channel</h3><p>Run <code>/ai channel #chat</code>. The bot replies to everything in that channel.</p></div>
-    <div class="step reveal"><i>03</i><h3>Play music</h3><p>Join a voice channel and run <code>/play</code> with a song name.</p></div>
-    <div class="step reveal"><i>04</i><h3>Customise</h3><p>Add a welcome message and your own commands.</p></div>
+    <div class="step reveal">
+      <i>01</i>
+      <h3>Invite the bot</h3>
+      <p>Click <strong>Add to Discord</strong> and choose your server. Grant the requested permissions.</p>
+    </div>
+    <div class="step reveal">
+      <i>02</i>
+      <h3>Set an AI channel</h3>
+      <p>Run <code>/ai channel #chat</code>. The bot will answer every message in that channel without needing a mention.</p>
+    </div>
+    <div class="step reveal">
+      <i>03</i>
+      <h3>Play music</h3>
+      <p>Join a voice channel and run <code>/play</code> with any song name. Use the mini player buttons to control playback.</p>
+    </div>
+    <div class="step reveal">
+      <i>04</i>
+      <h3>Customise</h3>
+      <p>Add a welcome message and create your own custom commands for rules, links or FAQs.</p>
+    </div>
   </div>
 </section>
 
 <section class="sec" id="docs">
-  <p class="eyebrow">Manual</p>
+  <p class="eyebrow">Manual & Documentation</p>
   <h2>Commands</h2>
   <div class="table">
-    <div class="tr th"><span>Command</span><span>What it does</span><span>Needs</span></div>
-    <div class="tr"><span><code>/play query</code></span><span>Search YouTube and play in your voice channel with the mini player</span><span>Be in a voice channel</span></div>
-    <div class="tr"><span><code>/stop</code></span><span>Stop the music and leave the voice channel</span><span>-</span></div>
-    <div class="tr"><span><code>/ai channel</code></span><span>Make a channel an AI chat channel (no mention needed)</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/ai model</code></span><span>Choose provider and model (autocomplete list)</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/ai prompt</code></span><span>Set the AI system prompt</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/ai status</code> / <code>/ai off</code></span><span>Show settings or turn AI chat off</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/welcome set</code> / <code>off</code></span><span>Set welcome channel and message, or disable it</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/command add|remove|list</code></span><span>Manage custom text commands</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/c name</code></span><span>Run a custom command</span><span>-</span></div>
-    <div class="tr"><span><code>/ping</code> / <code>/help</code></span><span>Latency and command overview</span><span>-</span></div>
+    <div class="tr th">
+      <span>Command</span>
+      <span>What it does</span>
+      <span>Needs</span>
+    </div>
+    <div class="tr">
+      <span><code>/play query</code></span>
+      <span>Search YouTube and play in your voice channel with the mini player</span>
+      <span>Be in a voice channel</span>
+    </div>
+    <div class="tr">
+      <span><code>/stop</code></span>
+      <span>Stop the music and leave the voice channel</span>
+      <span>—</span>
+    </div>
+    <div class="tr">
+      <span><code>/ai channel</code></span>
+      <span>Make a channel an AI chat channel (no mention needed)</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/ai model</code></span>
+      <span>Choose provider and model (autocomplete list)</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/ai prompt</code></span>
+      <span>Set the AI system prompt</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/ai status</code> / <code>/ai off</code></span>
+      <span>Show settings or turn AI chat off</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/welcome set</code> / <code>off</code></span>
+      <span>Set welcome channel and message, or disable it</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/command add|remove|list</code></span>
+      <span>Manage custom text commands</span>
+      <span>Manage Server</span>
+    </div>
+    <div class="tr">
+      <span><code>/c name</code></span>
+      <span>Run a custom command</span>
+      <span>—</span>
+    </div>
+    <div class="tr">
+      <span><code>/ping</code> / <code>/help</code></span>
+      <span>Latency and command overview</span>
+      <span>—</span>
+    </div>
   </div>
+
   <h3 class="sub">FAQ</h3>
-  <details><summary>Does the bot reply in my AI channel without a mention?</summary><p>Yes. After <code>/ai channel #channel</code> it answers every message in that channel. It ignores other bots.</p></details>
-  <details><summary>Why do AI chat and welcome need extra intents?</summary><p>They read message content and member joins, which Discord treats as privileged intents. If they are off, the bot still runs in basic mode with music and commands.</p></details>
-  <details><summary>Is anything paid?</summary><p>No. There are no plans or premium features.</p></details>
-  <details><summary>Music does not start. What should I check?</summary><p>Join a voice channel first and make sure the bot can Connect and Speak there. The invite link already asks for those permissions.</p></details>
+  <details>
+    <summary>Does the bot reply in my AI channel without a mention?</summary>
+    <p>Yes. After <code>/ai channel #channel</code> it answers every message in that channel. It ignores other bots.</p>
+  </details>
+  <details>
+    <summary>Why do AI chat and welcome need extra intents?</summary>
+    <p>They read message content and member joins, which Discord treats as privileged intents. If they are off, the bot still runs in basic mode with music and commands.</p>
+  </details>
+  <details>
+    <summary>Is anything paid?</summary>
+    <p>No. There are no plans, no premium features and no payment required. Everything is free.</p>
+  </details>
+  <details>
+    <summary>Music does not start. What should I check?</summary>
+    <p>Join a voice channel first and make sure the bot can Connect and Speak there. The invite link already asks for those permissions.</p>
+  </details>
 </section>
 
 <section class="sec" id="status">
-  <p class="eyebrow">Live telemetry</p>
-  <h2>System status</h2>
+  <p class="eyebrow">Live Telemetry</p>
+  <h2>System Status</h2>
   <div class="panel">
-    <div class="row"><span>Discord gateway</span><em data-s="gateway">-</em></div>
-    <div class="row"><span>Stats API</span><em data-s="api">-</em></div>
-    <div class="row"><span>Mode</span><em data-s="mode">-</em></div>
-    <div class="row"><span>Servers</span><em data-s="servers">-</em></div>
-    <div class="row"><span>Gateway ping</span><em data-s="ping">-</em></div>
-    <div class="row"><span>Uptime since last restart</span><em data-s="uptime">-</em></div>
+    <div class="row"><span>Discord Gateway</span><em data-s="gateway">—</em></div>
+    <div class="row"><span>Stats API</span><em data-s="api">—</em></div>
+    <div class="row"><span>Mode</span><em data-s="mode">—</em></div>
+    <div class="row"><span>Servers</span><em data-s="servers">—</em></div>
+    <div class="row"><span>Gateway Ping</span><em data-s="ping">—</em></div>
+    <div class="row"><span>Uptime since last restart</span><em data-s="uptime">—</em></div>
   </div>
 </section>
 
 <section class="sec cta-band" id="support">
   <h2>Ready to add AxiomTAxis?</h2>
-  <p>Free for every server. Takes one click.</p>
-  <div class="cta"><a class="btn" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a><a class="btn ghost support-link" href="#" target="_blank" rel="noopener" hidden>Join support server</a></div>
+  <p>Free for every server. One click. No premium, no limits on core features.</p>
+  <div class="cta">
+    <a class="btn" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
+    <a class="btn ghost support-link" href="#" target="_blank" rel="noopener" hidden>Join support server</a>
+  </div>
 </section>
 
-<footer><span>&copy; AxiomTAxis</span><span>Free Discord bot. Handcrafted in India.</span></footer>
+<footer>
+  <div class="footer-inner">
+    <span>© AxiomTAxis</span>
+    <span>Free Discord bot · Handcrafted in India</span>
+  </div>
+</footer>
 
 <script src="config.js"></script>
 <script src="models.js"></script>
