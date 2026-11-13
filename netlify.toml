@@ -1,0 +1,3 @@
+[build]
+  command = "node website/build.js"
+  publish = "website"
