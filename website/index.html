@@ -82,7 +82,7 @@
     <article class="card reveal">
       <span class="tag tag-music">Music</span>
       <h3>YouTube Music Player</h3>
-      <p>Type <code>/play song name</code> — no URL required. Bot joins your voice channel and posts an interactive mini player with Pause, Resume, ±10s seek, Stop and a live progress bar.</p>
+      <p>Type <code>/play song name</code> — no URL required. Optionally pick a voice channel (or paste channel ID). Bot joins that VC and posts an interactive mini player with Pause, Resume, ±10s seek, Stop and a live progress bar. Use <code>/join</code> to join a VC first.</p>
     </article>
     <article class="card reveal">
       <span class="tag tag-ai">AI</span>
@@ -131,7 +131,7 @@
     <div class="step reveal">
       <i>03</i>
       <h3>Play music</h3>
-      <p>Join a voice channel and run <code>/play</code> with any song name. Use the mini player buttons to control playback.</p>
+      <p>Run <code>/play song</code> (joins your VC) or pick a channel / paste channel ID. Use mini player buttons to control playback.</p>
     </div>
     <div class="step reveal">
       <i>04</i>
@@ -151,9 +151,14 @@
       <span>Needs</span>
     </div>
     <div class="tr">
-      <span><code>/play query</code></span>
-      <span>Search YouTube and play in your voice channel with the mini player</span>
-      <span>Be in a voice channel</span>
+      <span><code>/play query [channel]</code></span>
+      <span>Search YouTube and play. Optional channel = join that VC by ID/select. If empty, uses your current VC</span>
+      <span>Voice channel access</span>
+    </div>
+    <div class="tr">
+      <span><code>/join channel</code></span>
+      <span>Join a voice channel by selection or channel ID (no music yet)</span>
+      <span>—</span>
     </div>
     <div class="tr">
       <span><code>/stop</code></span>
@@ -217,7 +222,11 @@
   </details>
   <details>
     <summary>Music does not start. What should I check?</summary>
-    <p>Join a voice channel first and make sure the bot can Connect and Speak there. The invite link already asks for those permissions.</p>
+    <p>Use <code>/play song channel:#your-vc</code> or join a VC yourself. Make sure the bot has Connect + Speak in that channel. The invite link already requests those permissions.</p>
+  </details>
+  <details>
+    <summary>How do I join by channel ID?</summary>
+    <p>In <code>/play</code> or <code>/join</code>, open the channel option and select the voice channel (Discord shows names). You can also paste a channel ID if Discord accepts it in the picker. Right-click a VC → Copy Channel ID (Developer Mode on).</p>
   </details>
 </section>
 
