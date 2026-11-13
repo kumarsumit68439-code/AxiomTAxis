@@ -8,6 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="dashboard.css">
+<style>
+.user-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
+.user-chip img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--txt);padding:8px 12px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+</style>
 </head>
 <body>
 <div class="app">
@@ -45,17 +51,19 @@
       <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
       <div class="top-title" id="topTitle">Overview</div>
       <div class="top-right">
+        <div class="user-chip" id="userChip"></div>
         <select id="guildSelect" class="guild-select">
           <option value="">Select server…</option>
         </select>
         <button class="btn save-btn" id="saveBtn">Save</button>
+        <button class="btn-ghost" id="logoutBtn" type="button">Logout</button>
       </div>
     </header>
 
     <div class="content">
       <section class="panel active" id="panel-overview">
         <h2>Server Overview</h2>
-        <p class="muted">Select a server, then open any module from the sidebar. Settings save to the same store the bot uses (after OAuth is connected).</p>
+        <p class="muted">Login ke baad aapke Discord servers yahan list hote hain. Server select karke sidebar se modules configure karo.</p>
         <div class="cards">
           <div class="card"><b data-ov="servers">—</b><span>Servers (bot)</span></div>
           <div class="card"><b data-ov="mode">—</b><span>Mode</span></div>
@@ -63,25 +71,24 @@
           <div class="card"><b data-ov="uptime">—</b><span>Uptime</span></div>
         </div>
         <div class="note">
-          <strong>Website-controlled:</strong> AI model/prompt and Welcome/Leave message text are set only from this dashboard (not Discord commands).
+          <strong>Website-controlled:</strong> AI model/prompt aur Welcome/Leave message text yahan se set hote hain.
         </div>
       </section>
 
       <section class="panel" id="panel-ai">
         <h2>AI Assistant</h2>
-        <p class="muted">Channel: <code>/ai channel</code> in Discord. Model & system prompt only from here.</p>
+        <p class="muted">Channel Discord me <code>/ai channel</code>. Model & prompt yahan se.</p>
         <label>Provider</label>
         <select id="ai-provider"></select>
         <label>Model</label>
         <select id="ai-model"></select>
         <label>System prompt</label>
         <textarea id="ai-prompt" rows="4" placeholder="You are a helpful Discord assistant…"></textarea>
-        <p class="hint">After Save + live API, bot uses these for that server’s AI channel.</p>
       </section>
 
       <section class="panel" id="panel-welcome">
         <h2>Join & Left</h2>
-        <p class="muted">Channels via Discord <code>/welcome set</code> / <code>leave</code>. Message text only from here.</p>
+        <p class="muted">Channel Discord se. Message text yahan se.</p>
         <label>Welcome message</label>
         <textarea id="welcome-msg" rows="3" placeholder="Welcome {user} to {server}! You are member #{count}."></textarea>
         <label>Leave message</label>
@@ -91,88 +98,65 @@
 
       <section class="panel" id="panel-counting">
         <h2>Counting</h2>
-        <p class="muted"><code>/counting set #channel</code> · <code>/counting reset</code> · <code>/counting status</code></p>
-        <div class="info-box">Sequential numbers in channel. Wrong / same user twice → reset. Milestone every 100.</div>
+        <p class="muted"><code>/counting set #channel</code></p>
+        <div class="info-box">Sequential count. Wrong / same user → reset.</div>
       </section>
 
       <section class="panel" id="panel-level">
         <h2>Level / XP</h2>
-        <p class="muted"><code>/level set</code> · <code>/level rank</code> · <code>/level leaderboard</code></p>
-        <div class="info-box">XP 15–25 per message (1 min cooldown). Level-up in configured channel.</div>
+        <p class="muted"><code>/level set</code> · <code>/level rank</code></p>
+        <div class="info-box">Message XP + leaderboard.</div>
       </section>
 
       <section class="panel" id="panel-ticket">
         <h2>Ticket</h2>
-        <p class="muted"><code>/ticket setup channel:#support category:… support_role:@Staff</code></p>
-        <div class="info-box">Panel opens private ticket; Close deletes after 5s.</div>
+        <p class="muted"><code>/ticket setup</code></p>
+        <div class="info-box">Panel + private ticket channels.</div>
       </section>
 
       <section class="panel" id="panel-verification">
         <h2>Verification</h2>
-        <p class="muted"><code>/verification setup channel:#verify role:@Verified</code></p>
-        <div class="info-box">Verify button grants role. Bot role must be above verified role.</div>
+        <p class="muted"><code>/verification setup</code></p>
+        <div class="info-box">Verify button + role.</div>
       </section>
 
       <section class="panel" id="panel-logging">
         <h2>Logging</h2>
         <p class="muted"><code>/logging set #logs</code></p>
-        <div class="info-box">Join/leave, message delete, bulk delete logs.</div>
+        <div class="info-box">Join/leave/delete logs.</div>
       </section>
 
       <section class="panel" id="panel-music">
         <h2>Music</h2>
         <p class="muted"><code>/play</code> · <code>/join</code> · <code>/stop</code></p>
-        <div class="info-box">YouTube + mini player. Join by channel select/ID.</div>
+        <div class="info-box">YouTube + mini player.</div>
       </section>
 
       <section class="panel" id="panel-trigger">
-        <h2>Trigger / Custom Commands</h2>
+        <h2>Trigger</h2>
         <p class="muted"><code>/command add</code> · <code>/c name</code></p>
-        <div class="info-box">Text triggers managed via Discord commands.</div>
+        <div class="info-box">Custom text commands.</div>
       </section>
 
-      <section class="panel" id="panel-suggestions">
-        <h2>Suggestions</h2>
-        <div class="coming">Coming soon — suggestion channel + approve/deny.</div>
-      </section>
-
-      <section class="panel" id="panel-yt">
-        <h2>YT Notification</h2>
-        <div class="coming">Coming soon — YouTube upload alerts.</div>
-      </section>
-
-      <section class="panel" id="panel-memes">
-        <h2>Auto Memes</h2>
-        <div class="coming">Coming soon — auto meme posts.</div>
-      </section>
-
-      <section class="panel" id="panel-automod">
-        <h2>Auto Moderation</h2>
-        <div class="coming">Coming soon — spam / invite / mention filters.</div>
-      </section>
-
-      <section class="panel" id="panel-antinuke">
-        <h2>Anti Nuke</h2>
-        <div class="coming">Coming soon — mass action protection.</div>
-      </section>
-
-      <section class="panel" id="panel-antiraid">
-        <h2>Anti Raid</h2>
-        <div class="coming">Coming soon — join rate limits.</div>
-      </section>
+      <section class="panel" id="panel-suggestions"><h2>Suggestions</h2><div class="coming">Coming soon</div></section>
+      <section class="panel" id="panel-yt"><h2>YT Notification</h2><div class="coming">Coming soon</div></section>
+      <section class="panel" id="panel-memes"><h2>Auto Memes</h2><div class="coming">Coming soon</div></section>
+      <section class="panel" id="panel-automod"><h2>Auto Moderation</h2><div class="coming">Coming soon</div></section>
+      <section class="panel" id="panel-antinuke"><h2>Anti Nuke</h2><div class="coming">Coming soon</div></section>
+      <section class="panel" id="panel-antiraid"><h2>Anti Raid</h2><div class="coming">Coming soon</div></section>
 
       <section class="panel" id="panel-uptime">
-        <h2>Uptime / Status</h2>
-        <p class="muted">Live stats from the bot.</p>
+        <h2>Uptime</h2>
         <div class="cards">
           <div class="card"><b data-ov="uptime2">—</b><span>Uptime</span></div>
-          <div class="card"><b data-ov="ping2">—</b><span>Gateway ping</span></div>
+          <div class="card"><b data-ov="ping2">—</b><span>Ping</span></div>
         </div>
       </section>
     </div>
   </main>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="models.js"></script>
 <script src="dashboard.js"></script>

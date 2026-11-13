@@ -4,132 +4,83 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#05060a">
-<title>AxiomTAxis — Free Discord Bot | Music, AI Chat & More</title>
-<meta name="description" content="AxiomTAxis is a free Discord bot with YouTube music, AI chat, tickets, levels, counting and more. 100% free.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>AxiomTAxis — Free Discord Bot</title>
+<meta name="description" content="Free Discord bot with music, AI, tickets, levels, counting. Dashboard with Discord login.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <nav class="nav" id="nav">
-  <a class="brand" href="#home">
-    <span class="logo-mark"><img data-avatar alt="" hidden><b>A</b></span>
-    <span class="brand-text">Axiom<span class="accent">TAxis</span></span>
-  </a>
+  <a class="brand" href="#home"><span class="logo-mark"><img data-avatar alt="" hidden><b>A</b></span><span class="brand-text">Axiom<span class="accent">TAxis</span></span></a>
   <div class="links" id="links">
     <a href="#home">Home</a>
     <a href="#features">Features</a>
-    <a href="#how">How it works</a>
     <a href="#docs">Docs</a>
-    <a href="#status">Status</a>
+    <a href="/login.html">Login</a>
     <a href="/dashboard.html">Dashboard</a>
-    <a href="#support" class="support-link" hidden>Support</a>
     <a class="btn btn-sm" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
   </div>
   <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
-
 <header class="hero" id="home">
   <div class="hero-glow"></div>
-  <div class="pill">
-    <i class="dot" data-dot></i>
-    <span data-pill>Checking status…</span>
-  </div>
-  <div class="hero-logo">
-    <div class="avatar-ring">
-      <div class="avatar"><img data-avatar alt="AxiomTAxis" hidden><b>A</b></div>
-    </div>
-  </div>
+  <div class="pill"><i class="dot" data-dot></i><span data-pill>Checking status…</span></div>
+  <div class="hero-logo"><div class="avatar-ring"><div class="avatar"><img data-avatar alt="AxiomTAxis" hidden><b>A</b></div></div></div>
   <h1>Axiom<span class="grad">TAxis</span></h1>
-  <p class="lead">Free Discord bot with music, AI, tickets, levels, counting, verification and more. <strong>No premium. Everything free.</strong></p>
+  <p class="lead">Free Discord bot — music, AI, tickets, levels, counting. <strong>Discord login dashboard.</strong></p>
   <div class="cta">
     <a class="btn" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
-    <a class="btn ghost" href="/dashboard.html">Open Dashboard</a>
+    <a class="btn ghost" href="/login.html">Login with Discord</a>
   </div>
-  <div class="chips">
-    <span>Music</span><span>AI</span><span>Ticket</span><span>Level</span><span>Counting</span><span class="chip-free">100% Free</span>
-  </div>
+  <div class="chips"><span>Music</span><span>AI</span><span>Ticket</span><span>Level</span><span class="chip-free">100% Free</span></div>
   <div class="stats">
     <div class="stat"><b data-stat="servers">—</b><small>Servers</small></div>
-    <div class="stat"><b data-stat="users">—</b><small>Members reached</small></div>
-    <div class="stat"><b data-stat="ping">—</b><small>Gateway ping</small></div>
+    <div class="stat"><b data-stat="users">—</b><small>Members</small></div>
+    <div class="stat"><b data-stat="ping">—</b><small>Ping</small></div>
     <div class="stat"><b data-stat="uptime">—</b><small>Uptime</small></div>
   </div>
 </header>
-
 <section class="sec" id="features">
-  <p class="eyebrow">Complete Feature Suite</p>
-  <h2>Everything free, in one bot</h2>
-  <p class="sec-sub">Music, AI, tickets, levels, counting, verification, logging and more.</p>
+  <p class="eyebrow">Features</p>
+  <h2>Everything free</h2>
   <div class="grid">
-    <article class="card reveal"><span class="tag tag-music">Music</span><h3>YouTube player</h3><p><code>/play</code> with optional channel. Mini player controls.</p></article>
-    <article class="card reveal"><span class="tag tag-ai">AI</span><h3>AI chat</h3><p>No-mention AI channel. Model & prompt from Dashboard.</p></article>
-    <article class="card reveal"><span class="tag tag-community">Ticket</span><h3>Support tickets</h3><p>Panel + private channels + close button.</p></article>
-    <article class="card reveal"><span class="tag tag-utility">Level</span><h3>XP & ranks</h3><p>Message XP, rank cards, leaderboard.</p></article>
-    <article class="card reveal"><span class="tag tag-control">Counting</span><h3>Counting channel</h3><p>Sequential numbers, reset on fail, milestones.</p></article>
-    <article class="card reveal"><span class="tag tag-free">Free</span><h3>No payments</h3><p>No premium tier. All core features free.</p></article>
+    <article class="card reveal"><span class="tag tag-music">Music</span><h3>YouTube</h3><p><code>/play</code> + mini player</p></article>
+    <article class="card reveal"><span class="tag tag-ai">AI</span><h3>AI chat</h3><p>Model from Dashboard</p></article>
+    <article class="card reveal"><span class="tag tag-community">Ticket</span><h3>Tickets</h3><p>Panel + private channels</p></article>
+    <article class="card reveal"><span class="tag tag-utility">Level</span><h3>XP</h3><p>Rank + leaderboard</p></article>
   </div>
-  <h3 class="sub">AI Providers</h3>
   <div class="chips providers" id="providers"></div>
 </section>
-
-<section class="sec" id="how">
-  <p class="eyebrow">Getting Started</p>
-  <h2>Up and running in 4 steps</h2>
-  <div class="steps">
-    <div class="step reveal"><i>01</i><h3>Invite</h3><p>Add the bot to your server.</p></div>
-    <div class="step reveal"><i>02</i><h3>Dashboard</h3><p>Open Dashboard for AI model & welcome text.</p></div>
-    <div class="step reveal"><i>03</i><h3>Channels</h3><p>Use Discord commands for counting, ticket, level, etc.</p></div>
-    <div class="step reveal"><i>04</i><h3>Play</h3><p><code>/play</code> music or enable AI channel.</p></div>
-  </div>
-</section>
-
 <section class="sec" id="docs">
-  <p class="eyebrow">Manual</p>
-  <h2>Main commands</h2>
+  <p class="eyebrow">Commands</p>
+  <h2>Quick list</h2>
   <div class="table">
-    <div class="tr th"><span>Command</span><span>What it does</span><span>Needs</span></div>
-    <div class="tr"><span><code>/play</code> <code>/join</code> <code>/stop</code></span><span>Music</span><span>VC access</span></div>
-    <div class="tr"><span><code>/ai channel</code></span><span>AI no-mention channel</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/ticket setup</code></span><span>Ticket panel</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/level set</code> <code>/rank</code></span><span>Levels</span><span>—</span></div>
-    <div class="tr"><span><code>/counting set</code></span><span>Counting channel</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/verification setup</code></span><span>Verify button + role</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/logging set</code></span><span>Log channel</span><span>Manage Server</span></div>
-    <div class="tr"><span><code>/welcome set</code></span><span>Welcome channel (text from Dashboard)</span><span>Manage Server</span></div>
+    <div class="tr th"><span>Command</span><span>What</span><span>Needs</span></div>
+    <div class="tr"><span><code>/play</code></span><span>Music</span><span>VC</span></div>
+    <div class="tr"><span><code>/ai channel</code></span><span>AI channel</span><span>Manage</span></div>
+    <div class="tr"><span><code>/ticket setup</code></span><span>Tickets</span><span>Manage</span></div>
+    <div class="tr"><span><code>/level set</code></span><span>Levels</span><span>Manage</span></div>
+    <div class="tr"><span><code>/counting set</code></span><span>Counting</span><span>Manage</span></div>
   </div>
 </section>
-
 <section class="sec" id="status">
-  <p class="eyebrow">Live telemetry</p>
-  <h2>System status</h2>
+  <p class="eyebrow">Status</p>
+  <h2>System</h2>
   <div class="panel">
-    <div class="row"><span>Discord Gateway</span><em data-s="gateway">—</em></div>
-    <div class="row"><span>Stats API</span><em data-s="api">—</em></div>
-    <div class="row"><span>Mode</span><em data-s="mode">—</em></div>
+    <div class="row"><span>Gateway</span><em data-s="gateway">—</em></div>
+    <div class="row"><span>API</span><em data-s="api">—</em></div>
     <div class="row"><span>Servers</span><em data-s="servers">—</em></div>
-    <div class="row"><span>Gateway Ping</span><em data-s="ping">—</em></div>
-    <div class="row"><span>Uptime</span><em data-s="uptime">—</em></div>
+    <div class="row"><span>Ping</span><em data-s="ping">—</em></div>
   </div>
 </section>
-
-<section class="sec cta-band" id="support">
-  <h2>Ready to add AxiomTAxis?</h2>
-  <p>Free for every server.</p>
+<section class="sec cta-band">
+  <h2>Get started</h2>
   <div class="cta">
     <a class="btn" data-invite href="#" target="_blank" rel="noopener">Add to Discord</a>
-    <a class="btn ghost" href="/dashboard.html">Dashboard</a>
+    <a class="btn ghost" href="/login.html">Login</a>
   </div>
 </section>
-
-<footer>
-  <div class="footer-inner">
-    <span>© AxiomTAxis</span>
-    <span>Free Discord bot · Handcrafted in India</span>
-  </div>
-</footer>
-
+<footer><div class="footer-inner"><span>© AxiomTAxis</span><span>Free · India</span></div></footer>
 <script src="config.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>
