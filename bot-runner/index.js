@@ -6,6 +6,8 @@ import * as music from './bots/music.js';
 import * as counting from './bots/counting.js';
 import * as verification from './bots/verification.js';
 import * as logging from './bots/logging.js';
+import * as ticket from './bots/ticket.js';
+import * as level from './bots/level.js';
 import { storageMode } from './bots/util.js';
 import { startStats } from './stats.js';
 
@@ -24,7 +26,9 @@ const ALL = [
   ...music.commands,
   ...counting.commands,
   ...verification.commands,
-  ...logging.commands
+  ...logging.commands,
+  ...ticket.commands,
+  ...level.commands
 ];
 
 let current = null;
@@ -40,6 +44,8 @@ async function boot(full) {
   counting.attach(client);
   verification.attach(client);
   logging.attach(client);
+  ticket.attach(client);
+  level.attach(client);
 
   client.once(Events.ClientReady, async (c) => {
     try {
@@ -49,8 +55,15 @@ async function boot(full) {
       console.error('command registration failed', e.message);
     }
     c.user.setActivity('/help', { type: ActivityType.Listening });
-    console.log('Online as', c.user.tag, '| mode:', full ? 'full' : 'basic', '| storage:', storageMode, '| servers:', c.guilds.cache.size);
-    if (!full) console.warn('Privileged intents off — counting, verification, logging, AI, welcome need Message Content + Server Members Intent.');
+    console.log(
+      'Online as', c.user.tag,
+      '| mode:', full ? 'full' : 'basic',
+      '| storage:', storageMode,
+      '| servers:', c.guilds.cache.size
+    );
+    if (!full) {
+      console.warn('Privileged intents off — enable Message Content + Server Members Intent for full features.');
+    }
   });
   client.on('error', (e) => console.error('client error', e.message));
 
