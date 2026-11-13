@@ -3,6 +3,9 @@ import * as simple from './bots/simple.js';
 import * as welcome from './bots/welcome.js';
 import * as ai from './bots/ai.js';
 import * as music from './bots/music.js';
+import * as counting from './bots/counting.js';
+import * as verification from './bots/verification.js';
+import * as logging from './bots/logging.js';
 import { storageMode } from './bots/util.js';
 import { startStats } from './stats.js';
 
@@ -13,9 +16,16 @@ if (!token) {
 }
 
 const BASE = [G.Guilds, G.GuildVoiceStates];
-// Privileged intents: must be enabled in Discord Developer Portal > Bot.
 const PRIVILEGED = [G.GuildMembers, G.GuildMessages, G.MessageContent];
-const ALL = [...simple.commands, ...welcome.commands, ...ai.commands, ...music.commands];
+const ALL = [
+  ...simple.commands,
+  ...welcome.commands,
+  ...ai.commands,
+  ...music.commands,
+  ...counting.commands,
+  ...verification.commands,
+  ...logging.commands
+];
 
 let current = null;
 let mode = 'starting';
@@ -27,6 +37,9 @@ async function boot(full) {
   welcome.attach(client);
   ai.attach(client);
   music.attach(client);
+  counting.attach(client);
+  verification.attach(client);
+  logging.attach(client);
 
   client.once(Events.ClientReady, async (c) => {
     try {
@@ -36,8 +49,8 @@ async function boot(full) {
       console.error('command registration failed', e.message);
     }
     c.user.setActivity('/help', { type: ActivityType.Listening });
-    console.log('Online as', c.user.tag, '| mode:', full ? 'full' : 'basic (no privileged intents)', '| settings storage:', storageMode, '| servers:', c.guilds.cache.size);
-    if (!full) console.warn('AI chat and welcome need Server Members Intent + Message Content Intent enabled in the Developer Portal (Bot tab). Then redeploy.');
+    console.log('Online as', c.user.tag, '| mode:', full ? 'full' : 'basic', '| storage:', storageMode, '| servers:', c.guilds.cache.size);
+    if (!full) console.warn('Privileged intents off — counting, verification, logging, AI, welcome need Message Content + Server Members Intent.');
   });
   client.on('error', (e) => console.error('client error', e.message));
 
@@ -58,7 +71,7 @@ try {
   await boot(true);
 } catch (e) {
   if (/disallowed intents/i.test(String(e.message))) {
-    console.warn('Privileged intents are not enabled in the Developer Portal. Starting in basic mode (music, ping, help, custom commands only).');
+    console.warn('Privileged intents not enabled. Starting basic mode.');
     await boot(false);
   } else {
     console.error('login failed', e.message);
