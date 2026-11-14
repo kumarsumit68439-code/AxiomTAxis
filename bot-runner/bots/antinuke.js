@@ -1,59 +1,58 @@
 import { Events, AuditLogEvent, EmbedBuilder } from 'discord.js';
-import { getSettings, guildLog } from './util.js';
+import { getSettings } from './util.js';
 
 export const commands = [];
 
-// Needs View Audit Log (and Kick/Ban/Manage Roles for punishments). The server owner, the bot and the whitelist are never punished.
-export function attach(client) {
-  const hits = new Map();
-  const seen = new Set();
+const hits = new Map();
 
-  async function watch(guild, auditType, flag) {
+// Detects mass channel/role deletes, bans and kicks via the audit log, then punishes the executor.
+// Needs: View Audit Log, Ban Members, Kick Members, Manage Roles, and the bot role above the target.
+export function attach(client) {
+  async function punish(guild, user, cfg, reason) {
+    const mode = cfg.punishment || 'ban';
+    let result = mode;
     try {
-      const c = (await getSettings(guild.id)).antinuke;
-      if (!c || !c.enabled || c[flag] === false) return;
-      const logs = await guild.fetchAuditLogs({ type: auditType, limit: 1 }).catch(() => null);
-      const e = logs && logs.entries.first();
-      if (!e || !e.executor || Date.now() - e.createdTimestamp > 8000) return;
-      if (seen.has(e.id)) return;
-      seen.add(e.id);
-      if (seen.size > 500) seen.clear();
-      const uid = e.executor.id;
-      if (uid === guild.ownerId || uid === client.user.id || (c.whitelist || []).includes(uid)) return;
-      const key = guild.id + ':' + uid;
+      if (mode === 'ban') await guild.members.ban(user.id, { reason: 'Anti-Nuke: ' + reason });
+      else {
+        const m = await guild.members.fetch(user.id);
+        if (mode === 'kick') await m.kick('Anti-Nuke: ' + reason);
+        else await m.roles.set(m.roles.cache.filter((r) => r.managed || r.id === guild.id).map((r) => r.id), 'Anti-Nuke: ' + reason);
+      }
+    } catch (e) { result = 'FAILED (' + e.message + '). Move the bot role higher.'; }
+    const ch = cfg.logChannelId && guild.channels.cache.get(cfg.logChannelId);
+    if (ch && ch.isTextBased()) {
+      const e = new EmbedBuilder().setColor(0xef4444).setTitle('Anti-Nuke triggered')
+        .setDescription(user.tag + ' (' + user.id + ')')
+        .addFields({ name: 'Reason', value: reason, inline: true }, { name: 'Action', value: result, inline: true }).setTimestamp();
+      await ch.send({ embeds: [e] }).catch(() => {});
+    }
+  }
+
+  async function guard(guild, type, match, label) {
+    try {
+      const s = await getSettings(guild.id);
+      const cfg = s.antinuke;
+      if (!cfg || !cfg.enabled) return;
+      const logs = await guild.fetchAuditLogs({ type, limit: 5 }).catch(() => null);
+      if (!logs) return;
+      const entry = [...logs.entries.values()].find((x) => Date.now() - x.createdTimestamp < 15000 && match(x));
+      if (!entry || !entry.executor) return;
+      const ex = entry.executor;
+      if (ex.id === client.user.id || ex.id === guild.ownerId || (cfg.whitelist || []).includes(ex.id)) return;
+      const key = guild.id + ':' + ex.id;
       const now = Date.now();
-      const win = (c.windowSec || 30) * 1000;
+      const win = (cfg.seconds || 10) * 1000;
       const arr = (hits.get(key) || []).filter((t) => now - t < win);
       arr.push(now);
       hits.set(key, arr);
-      if (arr.length < (c.limit || 3)) return;
+      if (arr.length < (cfg.limit || 3)) return;
       hits.delete(key);
-      await punish(guild, uid, c.punishment || 'removeroles', arr.length + ' destructive actions in ' + (c.windowSec || 30) + 's');
+      await punish(guild, ex, cfg, label + ' x' + arr.length + ' in ' + (cfg.seconds || 10) + 's');
     } catch (e) { console.error('antinuke', e.message); }
   }
 
-  async function punish(guild, uid, how, reason) {
-    let done = 'no action (missing permissions?)';
-    const member = await guild.members.fetch(uid).catch(() => null);
-    const why = 'Anti-Nuke: ' + reason;
-    if (how === 'ban') {
-      await guild.members.ban(uid, { reason: why }).then(() => { done = 'banned'; }).catch(() => {});
-    } else if (member && how === 'kick') {
-      await member.kick(why).then(() => { done = 'kicked'; }).catch(() => {});
-    } else if (member) {
-      const me = guild.members.me;
-      const roles = member.roles.cache.filter((r) => r.id !== guild.id && !r.managed && me && r.position < me.roles.highest.position);
-      await member.roles.remove(roles, why).then(() => { done = 'roles removed'; }).catch(() => {});
-    }
-    await guildLog(guild, new EmbedBuilder()
-      .setColor(0xef4444)
-      .setTitle('Anti-Nuke triggered')
-      .setDescription('<@' + uid + '> (' + uid + ')\n' + reason + '\nResult: **' + done + '**')
-      .setTimestamp());
-  }
-
-  client.on(Events.ChannelDelete, (ch) => ch.guild && watch(ch.guild, AuditLogEvent.ChannelDelete, 'protectChannels'));
-  client.on(Events.ChannelCreate, (ch) => ch.guild && watch(ch.guild, AuditLogEvent.ChannelCreate, 'protectChannels'));
-  client.on(Events.GuildRoleDelete, (r) => watch(r.guild, AuditLogEvent.RoleDelete, 'protectRoles'));
-  client.on(Events.GuildBanAdd, (b) => watch(b.guild, AuditLogEvent.MemberBanAdd, 'protectBans'));
+  client.on(Events.ChannelDelete, (ch) => { if (ch.guild) guard(ch.guild, AuditLogEvent.ChannelDelete, (x) => x.targetId === ch.id, 'Channel deletes'); });
+  client.on(Events.GuildRoleDelete, (r) => guard(r.guild, AuditLogEvent.RoleDelete, (x) => x.targetId === r.id, 'Role deletes'));
+  client.on(Events.GuildBanAdd, (b) => guard(b.guild, AuditLogEvent.MemberBanAdd, (x) => x.targetId === b.user.id, 'Mass bans'));
+  client.on(Events.GuildMemberRemove, (m) => guard(m.guild, AuditLogEvent.MemberKick, (x) => x.targetId === m.id, 'Mass kicks'));
 }

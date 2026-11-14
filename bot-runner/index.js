@@ -34,7 +34,7 @@ startStats(() => ({ client: current, mode }));
 
 async function boot(full) {
   const client = new Client({ intents: full ? [...BASE, ...PRIVILEGED] : BASE });
-  for (const m of MODULES) m.attach(client);
+  MODULES.forEach((m) => m.attach(client));
 
   client.once(Events.ClientReady, async (c) => {
     try {
@@ -44,15 +44,8 @@ async function boot(full) {
       console.error('command registration failed', e.message);
     }
     c.user.setActivity('/help', { type: ActivityType.Listening });
-    console.log(
-      'Online as', c.user.tag,
-      '| mode:', full ? 'full' : 'basic',
-      '| storage:', storageMode,
-      '| servers:', c.guilds.cache.size
-    );
-    if (!full) {
-      console.warn('Privileged intents off - enable Message Content + Server Members Intent for full features.');
-    }
+    console.log('Online as', c.user.tag, '| mode:', full ? 'full' : 'basic', '| storage:', storageMode, '| servers:', c.guilds.cache.size);
+    if (!full) console.warn('Privileged intents off - enable Message Content + Server Members Intent for full features.');
   });
   client.on('error', (e) => console.error('client error', e.message));
 

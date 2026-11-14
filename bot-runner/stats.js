@@ -1,13 +1,16 @@
 import http from 'node:http';
 import { handleApi } from './api.js';
 
-// Public stats (GET /stats) + dashboard API (/api/...). No secrets are exposed.
+// Public stats (GET /stats) + authenticated dashboard API (/api/guilds/...).
 export function startStats(get) {
   const port = Number(process.env.PORT) || 3000;
   http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
     const { client, mode } = get();
     if (req.url && req.url.startsWith('/api/')) return handleApi(req, res, client);
     if (req.url && req.url.startsWith('/stats')) {
@@ -23,5 +26,5 @@ export function startStats(get) {
       return res.end(JSON.stringify(body));
     }
     res.end(JSON.stringify({ ok: true }));
-  }).listen(port, () => console.log('Stats/API server on port', port));
+  }).listen(port, () => console.log('Stats + dashboard API on port', port));
 }
