@@ -1,6 +1,7 @@
 import http from 'node:http';
+import { handleApi } from './api.js';
 
-// Tiny public stats API used by the website (GET /stats). No secrets are exposed.
+// Public stats (GET /stats) + dashboard API (/api/...). No secrets are exposed.
 export function startStats(get) {
   const port = Number(process.env.PORT) || 3000;
   http.createServer((req, res) => {
@@ -8,6 +9,7 @@ export function startStats(get) {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
     const { client, mode } = get();
+    if (req.url && req.url.startsWith('/api/')) return handleApi(req, res, client);
     if (req.url && req.url.startsWith('/stats')) {
       const ready = !!(client && client.isReady());
       const body = { online: ready, mode, uptime: Math.floor(process.uptime()) };
@@ -21,5 +23,5 @@ export function startStats(get) {
       return res.end(JSON.stringify(body));
     }
     res.end(JSON.stringify({ ok: true }));
-  }).listen(port, () => console.log('Stats API on port', port));
+  }).listen(port, () => console.log('Stats/API server on port', port));
 }

@@ -8,6 +8,12 @@ import * as verification from './bots/verification.js';
 import * as logging from './bots/logging.js';
 import * as ticket from './bots/ticket.js';
 import * as level from './bots/level.js';
+import * as suggestions from './bots/suggestions.js';
+import * as yt from './bots/yt.js';
+import * as memes from './bots/memes.js';
+import * as automod from './bots/automod.js';
+import * as antinuke from './bots/antinuke.js';
+import * as antiraid from './bots/antiraid.js';
 import { storageMode } from './bots/util.js';
 import { startStats } from './stats.js';
 
@@ -17,19 +23,10 @@ if (!token) {
   process.exit(1);
 }
 
-const BASE = [G.Guilds, G.GuildVoiceStates];
+const BASE = [G.Guilds, G.GuildVoiceStates, G.GuildModeration];
 const PRIVILEGED = [G.GuildMembers, G.GuildMessages, G.MessageContent];
-const ALL = [
-  ...simple.commands,
-  ...welcome.commands,
-  ...ai.commands,
-  ...music.commands,
-  ...counting.commands,
-  ...verification.commands,
-  ...logging.commands,
-  ...ticket.commands,
-  ...level.commands
-];
+const MODULES = [simple, welcome, ai, music, counting, verification, logging, ticket, level, suggestions, yt, memes, automod, antinuke, antiraid];
+const ALL = MODULES.flatMap((m) => m.commands || []);
 
 let current = null;
 let mode = 'starting';
@@ -37,15 +34,7 @@ startStats(() => ({ client: current, mode }));
 
 async function boot(full) {
   const client = new Client({ intents: full ? [...BASE, ...PRIVILEGED] : BASE });
-  simple.attach(client);
-  welcome.attach(client);
-  ai.attach(client);
-  music.attach(client);
-  counting.attach(client);
-  verification.attach(client);
-  logging.attach(client);
-  ticket.attach(client);
-  level.attach(client);
+  for (const m of MODULES) m.attach(client);
 
   client.once(Events.ClientReady, async (c) => {
     try {
@@ -62,7 +51,7 @@ async function boot(full) {
       '| servers:', c.guilds.cache.size
     );
     if (!full) {
-      console.warn('Privileged intents off — enable Message Content + Server Members Intent for full features.');
+      console.warn('Privileged intents off - enable Message Content + Server Members Intent for full features.');
     }
   });
   client.on('error', (e) => console.error('client error', e.message));

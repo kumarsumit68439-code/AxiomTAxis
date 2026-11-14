@@ -1,0 +1,4 @@
+{
+  "buildCommand": "node website/build.js",
+  "outputDirectory": "website"
+}
