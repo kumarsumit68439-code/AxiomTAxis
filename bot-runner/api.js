@@ -2,9 +2,6 @@ import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle
 import { getSettings, saveSettings } from './bots/util.js';
 import { resolveChannel, fetchFeed } from './bots/yt.js';
 
-// Dashboard management API. Auth: Authorization: Bearer <Discord OAuth access token>.
-// The token owner must have Manage Server / Administrator / be owner in that guild.
-
 const ID = ['id'];
 const BOOL = ['bool'];
 const S = (n) => ['str', n];
@@ -78,7 +75,7 @@ function view(s) {
     levels: { enabled: !!lv.enabled, channelId: lv.channelId || null, members: Object.keys(lv.users || {}).length },
     logging: s.logging || {}, suggestions: s.suggestions || {}, memes: s.memes || {}, yt: s.yt || {},
     automod: s.automod || {}, antinuke: s.antinuke || {}, antiraid: s.antiraid || {},
-    ticket: s.ticket || {}, verification: s.verification || {}, commands: s.commands || {}
+    ticket: s.ticket || {}, verification: s.verification || {}, commands: s.commands || {}, profile: s.profile || {}
   };
 }
 
@@ -129,7 +126,7 @@ function textCh(guild, id) {
 
 async function safeSend(ch, payload) {
   try { return await ch.send(payload); } catch {
-    throw new HttpError(400, 'Bot cannot send in #' + ch.name + '. Give it View Channel, Send Messages and Embed Links there.');
+    throw new HttpError(400, 'Bot cannot send in #' + ch.name + '. Give View Channel, Send Messages and Embed Links.');
   }
 }
 
@@ -144,7 +141,7 @@ const ACTIONS = {
     if (b.supportRoleId && !guild.roles.cache.has(String(b.supportRoleId))) throw new HttpError(400, 'Invalid support role.');
     const embed = new EmbedBuilder().setColor(0xf97316)
       .setTitle(String(b.title || 'Support Tickets').slice(0, 100))
-      .setDescription(String(b.description || 'Help chahiye? Neeche **Open Ticket** button dabao.\nEk private channel banega jahan aap support se baat kar sakte ho.').slice(0, 1500));
+      .setDescription(String(b.description || 'Help chahiye? Neeche **Open Ticket** button dabao.').slice(0, 1500));
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('ticket:open').setLabel('Open Ticket').setStyle(ButtonStyle.Primary).setEmoji('🎫')
     );
@@ -161,10 +158,10 @@ const ACTIONS = {
     const role = guild.roles.cache.get(String(b.roleId || ''));
     if (!role || role.id === guild.id || role.managed) throw new HttpError(400, 'Select a valid role.');
     const me = guild.members.me;
-    if (me && role.position >= me.roles.highest.position) throw new HttpError(400, 'Move the bot role above "' + role.name + '" in Server Settings > Roles.');
+    if (me && role.position >= me.roles.highest.position) throw new HttpError(400, 'Move bot role above "' + role.name + '".');
     const embed = new EmbedBuilder().setColor(0xf97316)
       .setTitle(String(b.title || 'Server Verification').slice(0, 100))
-      .setDescription(String(b.description || 'Is server me join karne ke liye neeche **Verify** button dabao.\nRole milne ke baad aap channels dekh sakte ho.').slice(0, 1500));
+      .setDescription(String(b.description || 'Verify button dabao.').slice(0, 1500));
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('verify:btn').setLabel('Verify').setStyle(ButtonStyle.Success).setEmoji('✅')
     );
@@ -179,12 +176,12 @@ const ACTIONS = {
   async 'command.add'(guild, b, s) {
     const name = String(b.name || '').toLowerCase().trim();
     const reply = String(b.reply || '').trim().slice(0, 1800);
-    if (!/^[a-z0-9_-]{1,32}$/.test(name)) throw new HttpError(400, 'Name: a-z, 0-9, - and _ only (max 32).');
+    if (!/^[a-z0-9_-]{1,32}$/.test(name)) throw new HttpError(400, 'Name: a-z, 0-9, - and _ only.');
     if (!reply) throw new HttpError(400, 'Reply text is required.');
     s.commands = s.commands || {};
     if (!s.commands[name] && Object.keys(s.commands).length >= 50) throw new HttpError(400, 'Max 50 commands.');
     s.commands[name] = reply;
-    return 'Command saved. Members use /c ' + name;
+    return 'Command saved. Use /c ' + name;
   },
   async 'command.delete'(guild, b, s) {
     const name = String(b.name || '').toLowerCase();
@@ -205,11 +202,56 @@ const ACTIONS = {
     if (s.yt.items.length >= 5) throw new HttpError(400, 'Max 5 YouTube channels.');
     s.yt.items.push({ id, name: feed.title, lastId: feed.videos[0] ? feed.videos[0].id : null });
     if (s.yt.enabled === undefined) s.yt.enabled = true;
-    return 'Added ' + feed.title + '. New uploads will be posted.';
+    return 'Added ' + feed.title;
   },
   async 'yt.remove'(guild, b, s) {
     if (s.yt && s.yt.items) s.yt.items = s.yt.items.filter((x) => x.id !== b.id);
     return 'Removed.';
+  },
+  async 'profile.set'(guild, b, s) {
+    const me = guild.members.me;
+    if (!me) throw new HttpError(500, 'Bot member not found.');
+    const nick = b.nickname != null ? String(b.nickname).slice(0, 32) : undefined;
+    if (nick !== undefined) {
+      try { await me.setNickname(nick || null, 'Dashboard profile'); }
+      catch (e) { throw new HttpError(400, 'Nickname failed: ' + (e.message || 'permission')); }
+    }
+    const body = {};
+    if (b.bio != null) body.bio = String(b.bio).slice(0, 190);
+    async function toDataUri(url) {
+      if (!url) return null;
+      const u = String(url).trim();
+      if (!u) return null;
+      if (!/^https:\/\//i.test(u)) throw new HttpError(400, 'Image must be https URL');
+      const r = await fetch(u);
+      if (!r.ok) throw new HttpError(400, 'Could not download image');
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 8000000) throw new HttpError(400, 'Image too large');
+      const ct = (r.headers.get('content-type') || 'image/png').split(';')[0];
+      return 'data:' + ct + ';base64,' + buf.toString('base64');
+    }
+    if (b.avatarUrl) body.avatar = await toDataUri(b.avatarUrl);
+    if (b.bannerUrl) body.banner = await toDataUri(b.bannerUrl);
+    if (Object.keys(body).length) {
+      try { await guild.client.rest.patch(`/guilds/${guild.id}/members/@me`, { body }); }
+      catch (e) {
+        const msg = (e && e.rawError && e.rawError.message) || e.message || 'failed';
+        throw new HttpError(400, 'Profile media: ' + msg);
+      }
+    }
+    s.profile = s.profile || {};
+    if (nick !== undefined) s.profile.nickname = nick;
+    if (b.bio != null) s.profile.bio = String(b.bio).slice(0, 190);
+    if (b.avatarUrl) s.profile.avatarUrl = String(b.avatarUrl).slice(0, 500);
+    if (b.bannerUrl) s.profile.bannerUrl = String(b.bannerUrl).slice(0, 500);
+    return 'Server bot profile updated.';
+  },
+  async 'profile.reset'(guild, b, s) {
+    const me = guild.members.me;
+    if (me) await me.setNickname(null, 'Dashboard reset').catch(() => {});
+    try { await guild.client.rest.patch(`/guilds/${guild.id}/members/@me`, { body: { avatar: null, banner: null, bio: '' } }); } catch {}
+    s.profile = {};
+    return 'Profile reset.';
   }
 };
 
