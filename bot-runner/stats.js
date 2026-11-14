@@ -1,7 +1,8 @@
 import http from 'node:http';
 import { handleApi } from './api.js';
+import { handleMe } from './me.js';
 
-// Public stats (GET /stats) + authenticated dashboard API (/api/guilds/...).
+// Public stats (GET /stats) + authenticated dashboard API (/api/...).
 export function startStats(get) {
   const port = Number(process.env.PORT) || 3000;
   http.createServer((req, res) => {
@@ -12,6 +13,7 @@ export function startStats(get) {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
     const { client, mode } = get();
+    if (req.url && req.url.startsWith('/api/me')) return handleMe(req, res, client);
     if (req.url && req.url.startsWith('/api/')) return handleApi(req, res, client);
     if (req.url && req.url.startsWith('/stats')) {
       const ready = !!(client && client.isReady());
