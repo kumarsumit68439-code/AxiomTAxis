@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang='en'>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#05060a">
-<title>Dashboard — AxiomTAxis</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css">
-<link rel="stylesheet" href="dashboard-extra.css">
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<meta name='theme-color' content='#05060a'>
+<title>Dashboard - AxiomTAxis</title>
+<link rel='preconnect' href='https://fonts.googleapis.com'>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap' rel='stylesheet'>
+<link rel='stylesheet' href='dashboard.css'>
+<link rel='stylesheet' href='dashboard-extra.css'>
 <style>
 .user-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
 .user-chip img{width:28px;height:28px;border-radius:50%;object-fit:cover}
@@ -17,283 +17,244 @@
 </style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="side-brand">
-      <span class="logo">A</span>
-      <span>AxiomTAxis</span>
-    </div>
-    <nav class="side-nav" id="sideNav">
-      <a href="#overview" class="nav-item active" data-panel="overview"><span class="ico">🏠</span> Overview</a>
-      <a href="#ai" class="nav-item" data-panel="ai"><span class="ico">🧠</span> AI</a>
-      <a href="#welcome" class="nav-item" data-panel="welcome"><span class="ico">➡️</span> Join & Left</a>
-      <a href="#counting" class="nav-item" data-panel="counting"><span class="ico">🔢</span> Counting</a>
-      <a href="#level" class="nav-item" data-panel="level"><span class="ico">⭐</span> Level</a>
-      <a href="#ticket" class="nav-item" data-panel="ticket"><span class="ico">🎫</span> Ticket</a>
-      <a href="#verification" class="nav-item" data-panel="verification"><span class="ico">✅</span> Verification</a>
-      <a href="#logging" class="nav-item" data-panel="logging"><span class="ico">📋</span> Logging</a>
-      <a href="#music" class="nav-item" data-panel="music"><span class="ico">🎵</span> Music</a>
-      <a href="#trigger" class="nav-item" data-panel="trigger"><span class="ico">⚡</span> Trigger</a>
-      <a href="#suggestions" class="nav-item" data-panel="suggestions"><span class="ico">💡</span> Suggestions</a>
-      <a href="#yt" class="nav-item" data-panel="yt"><span class="ico">▶️</span> YT Notification</a>
-      <a href="#memes" class="nav-item" data-panel="memes"><span class="ico">😄</span> Auto Memes</a>
-      <a href="#automod" class="nav-item" data-panel="automod"><span class="ico">🤖</span> Auto Moderation</a>
-      <a href="#antinuke" class="nav-item" data-panel="antinuke"><span class="ico">🛡️</span> Anti Nuke</a>
-      <a href="#antiraid" class="nav-item" data-panel="antiraid"><span class="ico">🛡️</span> Anti Raid</a>
-      <a href="#uptime" class="nav-item" data-panel="uptime"><span class="ico">⏱️</span> Uptime</a>
+<div class='app'>
+  <aside class='sidebar' id='sidebar'>
+    <div class='side-brand'><span class='logo'>A</span><span>AxiomTAxis</span></div>
+    <nav class='side-nav' id='sideNav'>
+      <a href='#overview' class='nav-item active' data-panel='overview'><span class='ico'>🏠</span> Overview</a>
+      <a href='#ai' class='nav-item' data-panel='ai'><span class='ico'>🧠</span> AI</a>
+      <a href='#welcome' class='nav-item' data-panel='welcome'><span class='ico'>➡️</span> Join &amp; Left</a>
+      <a href='#counting' class='nav-item' data-panel='counting'><span class='ico'>🔢</span> Counting</a>
+      <a href='#level' class='nav-item' data-panel='level'><span class='ico'>⭐</span> Level</a>
+      <a href='#ticket' class='nav-item' data-panel='ticket'><span class='ico'>🎫</span> Ticket</a>
+      <a href='#verification' class='nav-item' data-panel='verification'><span class='ico'>✅</span> Verification</a>
+      <a href='#logging' class='nav-item' data-panel='logging'><span class='ico'>📋</span> Logging</a>
+      <a href='#music' class='nav-item' data-panel='music'><span class='ico'>🎵</span> Music</a>
+      <a href='#trigger' class='nav-item' data-panel='trigger'><span class='ico'>⚡</span> Trigger</a>
+      <a href='#suggestions' class='nav-item' data-panel='suggestions'><span class='ico'>💡</span> Suggestions</a>
+      <a href='#yt' class='nav-item' data-panel='yt'><span class='ico'>▶️</span> YT Notification</a>
+      <a href='#memes' class='nav-item' data-panel='memes'><span class='ico'>😄</span> Auto Memes</a>
+      <a href='#automod' class='nav-item' data-panel='automod'><span class='ico'>🤖</span> Auto Moderation</a>
+      <a href='#antinuke' class='nav-item' data-panel='antinuke'><span class='ico'>🛡️</span> Anti Nuke</a>
+      <a href='#antiraid' class='nav-item' data-panel='antiraid'><span class='ico'>🛡️</span> Anti Raid</a>
+      <a href='#uptime' class='nav-item' data-panel='uptime'><span class='ico'>⏱️</span> Uptime</a>
     </nav>
-    <div class="side-foot">
-      <a href="/?site" class="back">← Website</a>
-    </div>
+    <div class='side-foot'><a href='/?site' class='back'>← Website</a></div>
   </aside>
 
-  <main class="main">
-    <header class="topbar">
-      <button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
-      <div class="top-title" id="topTitle">Overview</div>
-      <div class="top-right">
-        <div class="user-chip" id="userChip"></div>
-        <a class="btn-ghost" id="inviteTop" href="#" target="_blank" rel="noopener">+ Invite Bot</a>
-        <select id="guildSelect" class="guild-select">
-          <option value="">Select server…</option>
-        </select>
-        <button class="btn save-btn" id="saveBtn">Save</button>
-        <button class="btn-ghost" id="logoutBtn" type="button">Logout</button>
+  <main class='main'>
+    <header class='topbar'>
+      <button class='menu-btn' id='menuBtn' aria-label='Menu'>☰</button>
+      <div class='top-title' id='topTitle'>Overview</div>
+      <div class='top-right'>
+        <div class='user-chip' id='userChip'></div>
+        <a class='btn alt invite-top' id='inviteTop' href='#' target='_blank' rel='noopener'>+ Add Bot</a>
+        <select id='guildSelect' class='guild-select'><option value=''>Select server...</option></select>
+        <button class='btn save-btn' id='saveBtn'>Save</button>
+        <button class='btn-ghost' id='logoutBtn' type='button'>Logout</button>
       </div>
     </header>
 
-    <div class="content">
-      <div class="banner" id="banner" hidden></div>
+    <div class='content'>
+      <div class='banner' id='banner' hidden></div>
 
-      <section class="panel active" id="panel-overview">
-        <h2>Your servers</h2>
-        <p class="muted">Step 1: bot ko apne server me invite karo. Step 2: <b>Manage</b> dabao aur sab modules yahin se configure karo.</p>
-        <div class="gcards" id="myGuilds"></div>
-        <div class="cards">
-          <div class="card"><b data-ov="servers">—</b><span>Servers (bot)</span></div>
-          <div class="card"><b data-ov="mode">—</b><span>Mode</span></div>
-          <div class="card"><b data-ov="ping">—</b><span>Ping</span></div>
-          <div class="card"><b data-ov="uptime">—</b><span>Uptime</span></div>
+      <section class='panel active' id='panel-overview'>
+        <h2>Server Overview</h2>
+        <p class='muted'>Server select karo, phir sidebar se module configure karo. Toggle/fields ke liye <b>Save</b>, panels aur commands ke liye unke apne buttons.</p>
+        <div class='cards'>
+          <div class='card'><b data-ov='servers'>-</b><span>Servers (bot)</span></div>
+          <div class='card'><b data-ov='mode'>-</b><span>Mode</span></div>
+          <div class='card'><b data-ov='ping'>-</b><span>Ping</span></div>
+          <div class='card'><b data-ov='uptime'>-</b><span>Uptime</span></div>
         </div>
-        <div class="note">
-          <strong>Save</strong> button toggles, channels aur text settings save karta hai. <strong>Send panel / Add / Delete</strong> buttons turant kaam karte hain.
-        </div>
+        <div class='btn-row'><a class='btn' id='inviteBtn' href='#' target='_blank' rel='noopener'>+ Invite bot to a server</a></div>
+        <div class='note'><strong>Sab website se:</strong> AI, Join/Left, Counting, Level, Ticket, Verification, Logging, Trigger, Suggestions, YT, Memes, AutoMod, Anti-Nuke, Anti-Raid.</div>
       </section>
 
-      <section class="panel" id="panel-ai">
+      <section class='panel' id='panel-ai'>
         <h2>AI Assistant</h2>
-        <p class="muted">Is channel me bot bina mention ke har message ka AI reply dega.</p>
-        <label>AI chat channel</label>
-        <select data-f="ai.channelId" data-kind="text"></select>
-        <label>Provider</label>
-        <select id="ai-provider" data-f="ai.provider"></select>
-        <label>Model</label>
-        <select id="ai-model" data-f="ai.model"></select>
-        <label>System prompt</label>
-        <textarea id="ai-prompt" data-f="ai.system" rows="4" placeholder="You are a helpful Discord assistant…"></textarea>
+        <p class='muted'>Is channel me bot bina mention ke AI reply dega.</p>
+        <label>AI chat channel</label><select data-f='ai.channelId' data-kind='text'></select>
+        <label>Provider</label><select id='ai-provider' data-f='ai.provider'></select>
+        <label>Model</label><select id='ai-model' data-f='ai.model'></select>
+        <label>System prompt</label><textarea id='ai-prompt' data-f='ai.system' rows='4' placeholder='You are a helpful Discord assistant...'></textarea>
       </section>
 
-      <section class="panel" id="panel-welcome">
-        <h2>Join & Left</h2>
-        <p class="muted">Welcome aur leave messages, channel aur text dono yahin se.</p>
-        <label class="sw"><input type="checkbox" data-f="welcome.enabled"> Welcome messages on</label>
-        <label>Welcome channel</label>
-        <select data-f="welcome.channelId" data-kind="text"></select>
-        <label>Welcome message</label>
-        <textarea id="welcome-msg" data-f="welcome.message" rows="3" placeholder="Welcome {user} to {server}! You are member #{count}."></textarea>
-        <label class="sw"><input type="checkbox" data-f="leave.enabled"> Leave messages on</label>
-        <label>Leave channel</label>
-        <select data-f="leave.channelId" data-kind="text"></select>
-        <label>Leave message</label>
-        <textarea id="leave-msg" data-f="leave.message" rows="3" placeholder="{username} left {server}. Members: {count}"></textarea>
-        <p class="hint">Placeholders: <code>{user}</code> <code>{username}</code> <code>{server}</code> <code>{count}</code></p>
+      <section class='panel' id='panel-welcome'>
+        <h2>Join &amp; Left</h2>
+        <p class='muted'>Channel aur message dono yahan se.</p>
+        <label class='sw'><input type='checkbox' data-f='welcome.enabled'> Welcome messages on</label>
+        <label>Welcome channel</label><select data-f='welcome.channelId' data-kind='text'></select>
+        <label>Welcome message</label><textarea id='welcome-msg' data-f='welcome.message' rows='3' placeholder='Welcome {user} to {server}! You are member #{count}.'></textarea>
+        <div class='sub'>Leave</div>
+        <label class='sw'><input type='checkbox' data-f='leave.enabled'> Leave messages on</label>
+        <label>Leave channel</label><select data-f='leave.channelId' data-kind='text'></select>
+        <label>Leave message</label><textarea id='leave-msg' data-f='leave.message' rows='3' placeholder='{username} left {server}. Members: {count}'></textarea>
+        <p class='hint'>Placeholders: <code>{user}</code> <code>{username}</code> <code>{server}</code> <code>{count}</code></p>
       </section>
 
-      <section class="panel" id="panel-counting">
+      <section class='panel' id='panel-counting'>
         <h2>Counting</h2>
-        <p class="muted">Members 1, 2, 3… ek ke baad ek gine. Galat number ya same user dobara = reset.</p>
-        <label>Counting channel</label>
-        <select data-f="counting.channelId" data-kind="text"></select>
-        <div class="status" id="counting-status"></div>
-        <div class="act-row"><button class="btn-ghost" data-act="counting.reset" data-collect="no">Reset count to 0</button></div>
+        <p class='muted'>Sequential counting. Galat number ya same user = reset.</p>
+        <label>Counting channel</label><select data-f='counting.channelId' data-kind='text'></select>
+        <div class='status' id='counting-status'>-</div>
+        <div class='btn-row'><button class='btn alt' data-act='counting.reset' data-collect='no'>Reset count to 0</button></div>
       </section>
 
-      <section class="panel" id="panel-level">
+      <section class='panel' id='panel-level'>
         <h2>Level / XP</h2>
-        <p class="muted">Message XP, rank aur leaderboard (<code>/level rank</code>, <code>/level leaderboard</code>).</p>
-        <label class="sw"><input type="checkbox" data-f="levels.enabled"> Level system on</label>
-        <label>Level-up announcement channel (optional)</label>
-        <select data-f="levels.channelId" data-kind="text"></select>
-        <div class="status" id="level-status"></div>
+        <p class='muted'>Message XP, rank aur leaderboard (<code>/level rank</code>, <code>/level leaderboard</code>).</p>
+        <label class='sw'><input type='checkbox' data-f='levels.enabled'> Levels on</label>
+        <label>Level-up message channel</label><select data-f='levels.channelId' data-kind='text'></select>
+        <div class='status' id='level-status'>-</div>
       </section>
 
-      <section class="panel" id="panel-ticket">
+      <section class='panel' id='panel-ticket'>
         <h2>Ticket</h2>
-        <p class="muted">Panel channel me bhejo. Member button dabaye to private ticket channel banta hai.</p>
-        <label>Panel channel</label>
-        <select data-a="channelId" data-kind="text"></select>
-        <div class="grid2">
-          <div><label>Ticket category (optional)</label><select data-a="categoryId" data-kind="cat"></select></div>
-          <div><label>Support role (optional)</label><select data-a="supportRoleId" data-kind="role"></select></div>
+        <p class='muted'>Panel bhejo aur private ticket channels chalao.</p>
+        <div class='status' id='ticket-status'>-</div>
+        <label>Panel channel</label><select data-a='channelId' data-kind='text'></select>
+        <div class='g2'>
+          <div><label>Ticket category (optional)</label><select data-a='categoryId' data-kind='cat'></select></div>
+          <div><label>Support role (optional)</label><select data-a='supportRoleId' data-kind='role'></select></div>
         </div>
-        <label>Panel title</label>
-        <input type="text" data-a="title" maxlength="100" placeholder="Support Tickets">
-        <label>Panel description</label>
-        <textarea data-a="description" rows="3" placeholder="Help chahiye? Neeche Open Ticket button dabao."></textarea>
-        <div class="status" id="ticket-status"></div>
-        <div class="act-row">
-          <button class="btn" data-act="ticket.setup">Send panel / Enable</button>
-          <button class="btn danger" data-act="ticket.off" data-collect="no">Disable</button>
+        <label>Panel title</label><input type='text' data-a='title' placeholder='Support Tickets'>
+        <label>Panel description</label><textarea data-a='description' rows='3' placeholder='Help chahiye? Neeche Open Ticket button dabao.'></textarea>
+        <div class='btn-row'>
+          <button class='btn' data-act='ticket.setup'>Send / update panel</button>
+          <button class='btn alt danger' data-act='ticket.off' data-collect='no'>Disable tickets</button>
         </div>
       </section>
 
-      <section class="panel" id="panel-verification">
+      <section class='panel' id='panel-verification'>
         <h2>Verification</h2>
-        <p class="muted">Verify button dabane par member ko role milta hai. Bot ka role is role se upar hona chahiye.</p>
-        <label>Verification channel</label>
-        <select data-a="channelId" data-kind="text"></select>
-        <label>Role to give</label>
-        <select data-a="roleId" data-kind="role"></select>
-        <label>Panel title</label>
-        <input type="text" data-a="title" maxlength="100" placeholder="Server Verification">
-        <label>Panel description</label>
-        <textarea data-a="description" rows="3" placeholder="Verify button dabao aur server access pao."></textarea>
-        <div class="status" id="verification-status"></div>
-        <div class="act-row">
-          <button class="btn" data-act="verification.setup">Send panel / Turn on</button>
-          <button class="btn danger" data-act="verification.off" data-collect="no">Turn off</button>
+        <p class='muted'>Verify button bhejo. Member click kare to role mil jata hai. Bot role verify role se upar hona chahiye.</p>
+        <div class='status' id='verification-status'>-</div>
+        <label>Panel channel</label><select data-a='channelId' data-kind='text'></select>
+        <label>Role to give</label><select data-a='roleId' data-kind='role'></select>
+        <label>Panel title</label><input type='text' data-a='title' placeholder='Server Verification'>
+        <label>Panel description</label><textarea data-a='description' rows='3' placeholder='Neeche Verify button dabao.'></textarea>
+        <div class='btn-row'>
+          <button class='btn' data-act='verification.setup'>Send / update panel</button>
+          <button class='btn alt danger' data-act='verification.off' data-collect='no'>Turn verification OFF</button>
         </div>
       </section>
 
-      <section class="panel" id="panel-logging">
+      <section class='panel' id='panel-logging'>
         <h2>Logging</h2>
-        <p class="muted">Join, leave, message delete aur bulk delete logs.</p>
-        <label>Log channel</label>
-        <select data-f="logging.channelId" data-kind="text"></select>
+        <p class='muted'>Join, leave, message delete logs.</p>
+        <label>Log channel</label><select data-f='logging.channelId' data-kind='text'></select>
       </section>
 
-      <section class="panel" id="panel-music">
+      <section class='panel' id='panel-music'>
         <h2>Music</h2>
-        <p class="muted"><code>/play song name</code> · <code>/stop</code></p>
-        <div class="info-box">YouTube search, voice channel me play, chat me mini player (pause/resume, -10s, +10s, stop). Koi extra setting nahi, bot ko Connect + Speak permission chahiye.</div>
+        <p class='muted'>Voice channel me join karke <code>/play song name</code> chalao. Mini player me pause, resume, seek, stop buttons aate hain. Koi setting nahi chahiye.</p>
+        <div class='info-box'>YouTube search by name. Commands: <code>/play</code> <code>/stop</code></div>
       </section>
 
-      <section class="panel" id="panel-trigger">
-        <h2>Trigger (custom commands)</h2>
-        <p class="muted">Yahan banaye commands members <code>/c name</code> se chalate hain.</p>
-        <div class="grid2">
-          <div><label>Command name</label><input type="text" data-a="name" maxlength="32" placeholder="rules"></div>
+      <section class='panel' id='panel-trigger'>
+        <h2>Trigger (Custom commands)</h2>
+        <p class='muted'>Text commands banao. Members <code>/c name</code> se chalate hain.</p>
+        <div class='g2'>
+          <div><label>Command name</label><input type='text' data-a='name' maxlength='32' placeholder='rules'></div>
+          <div><label>Reply</label><input type='text' data-a='reply' maxlength='1800' placeholder='Be nice to everyone!'></div>
         </div>
-        <label>Reply text</label>
-        <textarea data-a="reply" rows="3" maxlength="1800" placeholder="Server rules: be nice!"></textarea>
-        <div class="act-row"><button class="btn" data-act="command.add">Add / Update command</button></div>
-        <h3 class="sub">Existing commands</h3>
-        <div class="list" id="cmd-list"></div>
+        <div class='btn-row'><button class='btn' data-act='command.add'>Add / update command</button></div>
+        <div class='sub'>Your commands</div>
+        <div class='list' id='cmd-list'></div>
       </section>
 
-      <section class="panel" id="panel-suggestions">
+      <section class='panel' id='panel-suggestions'>
         <h2>Suggestions</h2>
-        <p class="muted">Members <code>/suggest text</code> use karte hain, suggestion channel me 👍 👎 ke saath aati hai.</p>
-        <label class="sw"><input type="checkbox" data-f="suggestions.enabled"> Suggestions on</label>
-        <label>Suggestion channel</label>
-        <select data-f="suggestions.channelId" data-kind="text"></select>
+        <p class='muted'>Members <code>/suggest text</code> chalate hain, suggestion channel me 👍 👎 ke saath aati hai.</p>
+        <label class='sw'><input type='checkbox' data-f='suggestions.enabled'> Suggestions on</label>
+        <label>Suggestion channel</label><select data-f='suggestions.channelId' data-kind='text'></select>
       </section>
 
-      <section class="panel" id="panel-yt">
+      <section class='panel' id='panel-yt'>
         <h2>YT Notification</h2>
-        <p class="muted">Naya video upload hote hi channel me alert (har 5 minute check). Max 5 YouTube channels.</p>
-        <label class="sw"><input type="checkbox" data-f="yt.enabled"> Notifications on</label>
-        <label>Alert channel</label>
-        <select data-f="yt.channelId" data-kind="text"></select>
-        <label>Message ({channel} {title} {url})</label>
-        <textarea data-f="yt.message" rows="2" placeholder="{channel} uploaded a new video: {title} {url}"></textarea>
-        <h3 class="sub">Add YouTube channel</h3>
-        <input type="text" data-a="input" placeholder="@handle, channel link or UC… ID">
-        <div class="act-row"><button class="btn" data-act="yt.add">Add channel</button></div>
-        <div class="list" id="yt-list"></div>
+        <p class='muted'>Naya video upload hote hi channel me post. Har 5 minute check hota hai.</p>
+        <label class='sw'><input type='checkbox' data-f='yt.enabled'> Notifications on</label>
+        <label>Post in channel</label><select data-f='yt.channelId' data-kind='text'></select>
+        <label>Message</label><input type='text' data-f='yt.message' placeholder='{channel} uploaded: {title} {url}'>
+        <p class='hint'>Placeholders: <code>{channel}</code> <code>{title}</code> <code>{url}</code></p>
+        <div class='sub'>YouTube channels (max 5)</div>
+        <label>Channel link, @handle or ID</label><input type='text' data-a='input' placeholder='@mkbhd or https://youtube.com/@mkbhd'>
+        <div class='btn-row'><button class='btn' data-act='yt.add'>Add YouTube channel</button></div>
+        <div class='list' id='yt-list'></div>
       </section>
 
-      <section class="panel" id="panel-memes">
+      <section class='panel' id='panel-memes'>
         <h2>Auto Memes</h2>
-        <p class="muted">Bot channel me automatically meme post karta hai. Manual: <code>/meme</code>.</p>
-        <label class="sw"><input type="checkbox" data-f="memes.enabled"> Auto memes on</label>
-        <label>Meme channel</label>
-        <select data-f="memes.channelId" data-kind="text"></select>
-        <label>Every (minutes, min 5)</label>
-        <input type="number" data-f="memes.intervalMin" min="5" max="1440" placeholder="60">
+        <p class='muted'>Bot khud meme post karta rahega. Manual: <code>/meme</code>.</p>
+        <label class='sw'><input type='checkbox' data-f='memes.enabled'> Auto memes on</label>
+        <label>Meme channel</label><select data-f='memes.channelId' data-kind='text'></select>
+        <label>Every (minutes, min 5)</label><input type='number' min='5' max='1440' data-f='memes.intervalMin' placeholder='60'>
       </section>
 
-      <section class="panel" id="panel-automod">
+      <section class='panel' id='panel-automod'>
         <h2>Auto Moderation</h2>
-        <p class="muted">Manage Messages wale members is filter se exempt hain. Message Content Intent on hona chahiye.</p>
-        <label class="sw"><input type="checkbox" data-f="automod.enabled"> AutoMod on</label>
-        <label class="sw"><input type="checkbox" data-f="automod.antiSpam"> Anti-spam</label>
-        <div class="grid2">
-          <div><label>Max messages</label><input type="number" data-f="automod.spamMax" min="3" max="20" placeholder="6"></div>
-          <div><label>In seconds</label><input type="number" data-f="automod.spamSeconds" min="3" max="30" placeholder="5"></div>
+        <p class='muted'>Manage Messages wale members is se exempt hain. Message Content Intent chahiye.</p>
+        <label class='sw'><input type='checkbox' data-f='automod.enabled'> AutoMod on</label>
+        <label class='sw'><input type='checkbox' data-f='automod.antiInvite'> Block invite links</label>
+        <label class='sw'><input type='checkbox' data-f='automod.antiLinks'> Block all links</label>
+        <label class='sw'><input type='checkbox' data-f='automod.antiCaps'> Block excessive CAPS</label>
+        <label class='sw'><input type='checkbox' data-f='automod.antiMention'> Mention spam filter</label>
+        <label>Max mentions per message</label><input type='number' min='2' max='30' data-f='automod.mentionMax' placeholder='5'>
+        <label class='sw'><input type='checkbox' data-f='automod.antiSpam'> Spam filter</label>
+        <div class='g2'>
+          <div><label>Max messages</label><input type='number' min='3' max='20' data-f='automod.spamMax' placeholder='6'></div>
+          <div><label>In seconds</label><input type='number' min='3' max='30' data-f='automod.spamSeconds' placeholder='5'></div>
         </div>
-        <label class="sw"><input type="checkbox" data-f="automod.antiInvite"> Block Discord invite links</label>
-        <label class="sw"><input type="checkbox" data-f="automod.antiLinks"> Block all links</label>
-        <label class="sw"><input type="checkbox" data-f="automod.antiMention"> Block mass mentions</label>
-        <div class="grid2"><div><label>Max mentions per message</label><input type="number" data-f="automod.mentionMax" min="2" max="30" placeholder="5"></div></div>
-        <label class="sw"><input type="checkbox" data-f="automod.antiCaps"> Block excessive CAPS</label>
-        <label>Blocked words (comma or new line)</label>
-        <textarea data-f="automod.badWords" data-list rows="3" placeholder="word1, word2"></textarea>
-        <div class="grid2">
-          <div><label>Punishment</label><select data-f="automod.punishment"><option value="delete">Delete message only</option><option value="timeout">Delete + timeout</option></select></div>
-          <div><label>Timeout (minutes)</label><input type="number" data-f="automod.timeoutMin" min="1" max="1440" placeholder="5"></div>
+        <label>Blocked words (comma or new line)</label><textarea data-f='automod.badWords' data-list='1' rows='3'></textarea>
+        <div class='g2'>
+          <div><label>Punishment</label><select data-f='automod.punishment'><option value='delete'>Delete message only</option><option value='timeout'>Delete + timeout</option></select></div>
+          <div><label>Timeout minutes</label><input type='number' min='1' max='1440' data-f='automod.timeoutMin' placeholder='5'></div>
         </div>
-        <label>Log channel (optional)</label>
-        <select data-f="automod.logChannelId" data-kind="text"></select>
+        <label>Log channel</label><select data-f='automod.logChannelId' data-kind='text'></select>
       </section>
 
-      <section class="panel" id="panel-antinuke">
+      <section class='panel' id='panel-antinuke'>
         <h2>Anti Nuke</h2>
-        <p class="muted">Mass channel/role delete, ban ya kick karne wale ko automatically punish karta hai. Bot ko View Audit Log, Ban, Kick, Manage Roles chahiye aur bot role top pe hona chahiye. Server owner aur whitelist exempt hain.</p>
-        <label class="sw"><input type="checkbox" data-f="antinuke.enabled"> Anti-Nuke on</label>
-        <div class="grid2">
-          <div><label>Actions allowed</label><input type="number" data-f="antinuke.limit" min="1" max="10" placeholder="3"></div>
-          <div><label>Within seconds</label><input type="number" data-f="antinuke.seconds" min="5" max="60" placeholder="10"></div>
+        <p class='muted'>Mass channel/role delete, ban ya kick karne wale ko punish karta hai. Server owner aur whitelist exempt. Bot ko View Audit Log, Ban, Kick, Manage Roles chahiye aur bot role upar hona chahiye.</p>
+        <label class='sw'><input type='checkbox' data-f='antinuke.enabled'> Anti-Nuke on</label>
+        <div class='g2'>
+          <div><label>Trigger after (actions)</label><input type='number' min='1' max='10' data-f='antinuke.limit' placeholder='3'></div>
+          <div><label>Within (seconds)</label><input type='number' min='5' max='60' data-f='antinuke.seconds' placeholder='10'></div>
         </div>
-        <label>Punishment</label>
-        <select data-f="antinuke.punishment"><option value="ban">Ban</option><option value="kick">Kick</option><option value="strip">Remove all roles</option></select>
-        <label>Whitelist user IDs (comma or new line)</label>
-        <textarea data-f="antinuke.whitelist" data-list rows="3" placeholder="123456789012345678"></textarea>
-        <label>Log channel (optional)</label>
-        <select data-f="antinuke.logChannelId" data-kind="text"></select>
-        <div class="info-box">Note: deleted channels/roles wapas restore nahi hote, sirf culprit ko punish kiya jata hai.</div>
+        <label>Punishment</label><select data-f='antinuke.punishment'><option value='ban'>Ban</option><option value='kick'>Kick</option><option value='strip'>Strip all roles</option></select>
+        <label>Whitelist user IDs (one per line)</label><textarea data-f='antinuke.whitelist' data-list='1' rows='3'></textarea>
+        <label>Log channel</label><select data-f='antinuke.logChannelId' data-kind='text'></select>
+        <p class='hint'>Note: deleted channels/roles restore nahi hote, sirf attacker ko rokta hai.</p>
       </section>
 
-      <section class="panel" id="panel-antiraid">
+      <section class='panel' id='panel-antiraid'>
         <h2>Anti Raid</h2>
-        <p class="muted">Ek saath bahut saare join hone par ya bahut nayi accounts par action. Server Members Intent chahiye.</p>
-        <label class="sw"><input type="checkbox" data-f="antiraid.enabled"> Anti-Raid on</label>
-        <div class="grid2">
-          <div><label>Join limit</label><input type="number" data-f="antiraid.joinLimit" min="3" max="50" placeholder="8"></div>
-          <div><label>Within seconds</label><input type="number" data-f="antiraid.seconds" min="5" max="120" placeholder="10"></div>
-          <div><label>Min account age (days, 0 = off)</label><input type="number" data-f="antiraid.minAccountDays" min="0" max="365" placeholder="0"></div>
+        <p class='muted'>Join flood aur nayi accounts ko rokta hai. Server Members Intent chahiye.</p>
+        <label class='sw'><input type='checkbox' data-f='antiraid.enabled'> Anti-Raid on</label>
+        <div class='g2'>
+          <div><label>Joins to trigger</label><input type='number' min='3' max='50' data-f='antiraid.joinLimit' placeholder='8'></div>
+          <div><label>Within (seconds)</label><input type='number' min='5' max='120' data-f='antiraid.seconds' placeholder='10'></div>
         </div>
-        <label>Action</label>
-        <select data-f="antiraid.action"><option value="kick">Kick</option><option value="timeout">Timeout 24h</option><option value="ban">Ban</option></select>
-        <label>Log channel (optional)</label>
-        <select data-f="antiraid.logChannelId" data-kind="text"></select>
+        <label>Minimum account age (days, 0 = off)</label><input type='number' min='0' max='365' data-f='antiraid.minAccountDays' placeholder='0'>
+        <label>Action</label><select data-f='antiraid.action'><option value='kick'>Kick</option><option value='timeout'>Timeout 24h</option><option value='ban'>Ban</option></select>
+        <label>Log channel</label><select data-f='antiraid.logChannelId' data-kind='text'></select>
       </section>
 
-      <section class="panel" id="panel-uptime">
+      <section class='panel' id='panel-uptime'>
         <h2>Uptime</h2>
-        <div class="cards">
-          <div class="card"><b data-ov="uptime2">—</b><span>Uptime</span></div>
-          <div class="card"><b data-ov="ping2">—</b><span>Ping</span></div>
+        <div class='cards'>
+          <div class='card'><b data-ov='uptime2'>-</b><span>Uptime</span></div>
+          <div class='card'><b data-ov='ping2'>-</b><span>Ping</span></div>
         </div>
       </section>
     </div>
   </main>
 </div>
-<div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="models.js"></script>
-<script src="dashboard.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script>
+<script src='config.js'></script>
+<script src='models.js'></script>
+<script src='dashboard.js'></script>
 </body>
 </html>
