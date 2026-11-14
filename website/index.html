@@ -6,6 +6,18 @@
 <meta name="theme-color" content="#05060a">
 <title>AxiomTAxis — Free Discord Bot</title>
 <meta name="description" content="Free Discord bot with music, AI, tickets, levels, counting. Dashboard with Discord login.">
+<script src="config.js"></script>
+<script>
+/* Login-first gate: logged out -> /login.html, logged in -> /dashboard.html. Add ?site to view this landing page. */
+(function(){try{
+  if(location.search.indexOf('site')>-1)return;
+  var c=window.AXIOM_CONFIG||{};
+  if(!c.SUPABASE_URL)return;
+  var ref=new URL(c.SUPABASE_URL).hostname.split('.')[0];
+  var has=!!localStorage.getItem('sb-'+ref+'-auth-token');
+  location.replace(has?'/dashboard.html':'/login.html');
+}catch(e){}})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -81,7 +93,6 @@
   </div>
 </section>
 <footer><div class="footer-inner"><span>© AxiomTAxis</span><span>Free · India</span></div></footer>
-<script src="config.js"></script>
 <script src="models.js"></script>
 <script src="app.js"></script>
 </body>
