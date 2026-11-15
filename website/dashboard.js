@@ -3,12 +3,14 @@
   var models = window.AXIOM_MODELS || {};
   var API = (cfg.STATS_URL || '').trim();
   while (API.endsWith('/')) API = API.slice(0, -1);
+  // View/Send/Embed/History/Connect/Speak + Audit Log, Ban, Kick, Manage Roles/Channels/Messages, Reactions, Timeout
   var PERMS = '1099783302358';
   var $ = function (id) { return document.getElementById(id); };
   var qa = function (s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); };
+  var esc = function (t) { return String(t).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;'); };
 
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
-    document.body.innerHTML = '<div style="padding:40px;font-family:Inter,sans-serif;background:#05060a;color:#f0f2f8;min-height:100vh"><h2>Supabase not configured</h2><p style="color:#8b93b2">Vercel env: SUPABASE_URL + SUPABASE_ANON_KEY</p><a href="/" style="color:#f97316">Back</a></div>';
+    document.body.innerHTML = '<div style="padding:40px;font-family:Inter,sans-serif;background:#05060a;color:#f0f2f8;min-height:100vh"><h2>Supabase not configured</h2><p style="color:#8b93b2">Vercel env: SUPABASE_URL + SUPABASE_ANON_KEY, phir redeploy.</p><a href="/" style="color:#f97316">Back</a></div>';
     return;
   }
 
@@ -23,7 +25,7 @@
     t.className = 'toast' + (bad ? ' bad' : '');
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(function () { t.remove(); }, 4200);
+    setTimeout(function () { t.remove(); }, 5000);
   }
 
   function inviteUrl(gid) {
@@ -33,6 +35,7 @@
     return u;
   }
 
+  // Discord OAuth token is only given right after login; keep it so refresh never forces a re-login.
   function keepToken(s) { try { if (s && s.provider_token) localStorage.setItem('axiom_dtoken', s.provider_token); } catch (e) {} }
   function token() { keepToken(session); try { return localStorage.getItem('axiom_dtoken') || ''; } catch (e) { return ''; } }
   function clearToken() { try { localStorage.removeItem('axiom_dtoken'); } catch (e) {} }
@@ -47,6 +50,8 @@
     b.innerHTML = html; b.hidden = false;
     var r = $('reconnectBtn');
     if (r) r.onclick = reconnect;
+    var rt = $('retryBtn');
+    if (rt) rt.onclick = function () { if (currentGuild) loadGuild(currentGuild); };
   }
 
   supabase.auth.onAuthStateChange(function (event, s) {
@@ -84,39 +89,23 @@
     var sp = document.createElement('span'); sp.textContent = String(name); el.appendChild(sp);
   }
 
-  async function api(method, path, body) {
-    if (!API) throw new Error('STATS_URL set nahi hai (Vercel env me Railway URL daalo).');
-    var r = await fetch(API + path, {
-      method: method,
-      headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined
-    });
-    var j = await r.json().catch(function () { return {}; });
-    if (!r.ok) { var e = new Error(j.error || ('API ' + r.status)); e.status = r.status; e.data = j; throw e; }
-    return j;
-  }
-
   async function loadGuilds() {
     var select = $('guildSelect');
     select.innerHTML = '<option value="">Loading servers...</option>';
     var t = token();
-    if (!t) { select.innerHTML = '<option value="">Reconnect Discord</option>'; banner('Discord list ke liye reconnect. <button class="btn" id="reconnectBtn">Reconnect Discord</button>'); return; }
+    if (!t) { select.innerHTML = '<option value="">Reconnect Discord</option>'; banner('Discord server list ke liye ek baar reconnect karo. <button class="btn" id="reconnectBtn">Reconnect Discord</button>'); return; }
     try {
-      var guilds = [];
-      if (API) {
-        var resMe = await fetch(API + '/api/me/guilds', { headers: { Authorization: 'Bearer ' + t } });
-        var j = await resMe.json().catch(function () { return {}; });
-        if (resMe.status === 401) { clearToken(); select.innerHTML = '<option value="">Reconnect Discord</option>'; banner('Session expire. <button class="btn" id="reconnectBtn">Reconnect Discord</button>'); return; }
-        if (resMe.ok) guilds = (j.guilds || []).filter(function (g) { return g.botIn; });
-      }
+      var res = await fetch('https://discord.com/api/users/@me/guilds', { headers: { Authorization: 'Bearer ' + t } });
+      if (res.status === 401) { clearToken(); select.innerHTML = '<option value="">Reconnect Discord</option>'; banner('Discord session expire ho gaya. <button class="btn" id="reconnectBtn">Reconnect Discord</button>'); return; }
+      if (!res.ok) throw new Error('API ' + res.status);
+      var guilds = await res.json();
+      var canManage = function (g) { var p = 0; try { p = Number(BigInt(g.permissions || '0') & 0x28n); } catch (e) {} return !!g.owner || p !== 0; };
+      guilds = guilds.filter(canManage).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
       select.innerHTML = '<option value="">Select server...</option>';
       guilds.forEach(function (g) {
-        var o = document.createElement('option');
-        o.value = g.id;
-        o.textContent = (g.name || g.id) + ' · Bot Connected';
-        select.appendChild(o);
+        var o = document.createElement('option'); o.value = g.id; o.textContent = g.name || g.id; select.appendChild(o);
       });
-      if (!guilds.length) banner('Bot kisi managed server me nahi. <a class="btn" href="' + inviteUrl('') + '" target="_blank" rel="noopener">Invite bot</a>');
+      if (!guilds.length) banner('Koi server nahi mila jahan aapke paas Manage Server permission ho.');
       var saved = ''; try { saved = localStorage.getItem('axiom_guild') || ''; } catch (e) {}
       if (saved && guilds.some(function (g) { return g.id === saved; })) { select.value = saved; currentGuild = saved; loadGuild(saved); }
     } catch (e) {
@@ -127,14 +116,28 @@
 
   var provSel = $('ai-provider'), modelSel = $('ai-model');
   function fillModels() {
-    if (!modelSel) return;
     modelSel.innerHTML = '';
     (models[provSel.value] || []).forEach(function (m) { var o = document.createElement('option'); o.value = m; o.textContent = m; modelSel.appendChild(o); });
   }
-  if (provSel) {
-    Object.keys(models).forEach(function (p) { var o = document.createElement('option'); o.value = p; o.textContent = p; provSel.appendChild(o); });
-    provSel.onchange = fillModels;
-    if (Object.keys(models).length) { provSel.value = Object.keys(models)[0]; fillModels(); }
+  Object.keys(models).forEach(function (p) { var o = document.createElement('option'); o.value = p; o.textContent = p; provSel.appendChild(o); });
+  provSel.onchange = fillModels;
+  if (Object.keys(models).length) { provSel.value = Object.keys(models)[0]; fillModels(); }
+
+  async function api(method, path, body) {
+    if (!API) throw new Error('STATS_URL set nahi hai. Vercel env me STATS_URL = Railway bot URL daalo aur redeploy karo.');
+    var r;
+    try {
+      r = await fetch(API + path, {
+        method: method,
+        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch (netErr) {
+      throw new Error('Bot API (' + API + ') se connect nahi ho paya. STATS_URL sahi hai? Railway service chal rahi hai?');
+    }
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok) { var e = new Error(j.error || ('API ' + r.status)); e.status = r.status; e.data = j; throw e; }
+    return j;
   }
 
   var getp = function (obj, path) { return path.split('.').reduce(function (o, k) { return o == null ? undefined : o[k]; }, obj); };
@@ -168,55 +171,48 @@
 
   function renderLists() {
     var s = data.settings;
-    if ($('counting-status')) $('counting-status').innerHTML = 'Channel: <b>' + chName(s.counting && s.counting.channelId).replace(/</g, '') + '</b> · Count: <b>' + ((s.counting && s.counting.count) || 0) + '</b>';
-    if ($('level-status')) $('level-status').innerHTML = 'Levels: <b>' + (s.levels && s.levels.enabled ? 'On' : 'Off') + '</b> · XP members: <b>' + ((s.levels && s.levels.members) || 0) + '</b>';
+    $('counting-status').innerHTML = 'Channel: <b>' + esc(chName(s.counting.channelId)) + '</b> &middot; Current count: <b>' + (s.counting.count || 0) + '</b>';
+    $('level-status').innerHTML = 'Levels: <b>' + (s.levels.enabled ? 'On' : 'Off') + '</b> &middot; Members with XP: <b>' + (s.levels.members || 0) + '</b>';
     var t = s.ticket || {};
-    if ($('ticket-status')) $('ticket-status').innerHTML = t.enabled ? 'ON · Panel: ' + chName(t.panelChannelId) : 'OFF';
+    $('ticket-status').innerHTML = t.enabled ? 'Status: <b>ON</b> &middot; Panel: <b>' + esc(chName(t.panelChannelId)) + '</b> &middot; Category: <b>' + esc(chName(t.categoryId)) + '</b> &middot; Support role: <b>' + esc(roleName(t.supportRoleId)) + '</b>' : 'Status: <b>OFF</b>';
     var v = s.verification || {};
-    if ($('verification-status')) $('verification-status').innerHTML = v.roleId ? 'ON · Role: ' + roleName(v.roleId) : 'OFF';
-    if ($('profile-nick') && s.profile) {
-      $('profile-nick').value = s.profile.nickname || '';
-      if ($('profile-bio')) $('profile-bio').value = s.profile.bio || '';
-      if ($('profile-avatar')) $('profile-avatar').value = s.profile.avatarUrl || '';
-      if ($('profile-banner')) $('profile-banner').value = s.profile.bannerUrl || '';
-    }
-    var cl = $('cmd-list');
-    if (cl) {
-      cl.innerHTML = '';
-      var names = Object.keys(s.commands || {});
-      if (!names.length) cl.innerHTML = '<div class="hint">No commands</div>';
-      names.forEach(function (n) {
-        var row = document.createElement('div'); row.className = 'li';
-        var sp = document.createElement('span'); sp.textContent = '/c ' + n;
-        var b = document.createElement('button'); b.className = 'btn alt danger'; b.textContent = 'Delete';
-        b.setAttribute('data-act', 'command.delete'); b.setAttribute('data-name', n); b.setAttribute('data-collect', 'no');
-        row.appendChild(sp); row.appendChild(b); cl.appendChild(row);
-      });
-    }
-    var yl = $('yt-list');
-    if (yl) {
-      yl.innerHTML = '';
-      ((s.yt && s.yt.items) || []).forEach(function (it) {
-        var row = document.createElement('div'); row.className = 'li';
-        var sp = document.createElement('span'); sp.textContent = it.name || it.id;
-        var b = document.createElement('button'); b.className = 'btn alt danger'; b.textContent = 'Remove';
-        b.setAttribute('data-act', 'yt.remove'); b.setAttribute('data-id', it.id); b.setAttribute('data-collect', 'no');
-        row.appendChild(sp); row.appendChild(b); yl.appendChild(row);
-      });
-    }
+    $('verification-status').innerHTML = v.roleId ? 'Status: <b>ON</b> &middot; Panel: <b>' + esc(chName(v.channelId)) + '</b> &middot; Role: <b>' + esc(roleName(v.roleId)) + '</b>' : 'Status: <b>OFF</b>';
+
+    var cl = $('cmd-list'); cl.innerHTML = '';
+    var names = Object.keys(s.commands || {});
+    if (!names.length) cl.innerHTML = '<div class="hint">Abhi koi command nahi.</div>';
+    names.forEach(function (n) {
+      var row = document.createElement('div'); row.className = 'li';
+      var sp = document.createElement('span'); sp.textContent = '/c ' + n + ' - ' + s.commands[n];
+      var b = document.createElement('button'); b.className = 'btn alt danger'; b.textContent = 'Delete';
+      b.setAttribute('data-act', 'command.delete'); b.setAttribute('data-name', n); b.setAttribute('data-collect', 'no');
+      row.appendChild(sp); row.appendChild(b); cl.appendChild(row);
+    });
+
+    var yl = $('yt-list'); yl.innerHTML = '';
+    var items = (s.yt && s.yt.items) || [];
+    if (!items.length) yl.innerHTML = '<div class="hint">Koi YouTube channel add nahi.</div>';
+    items.forEach(function (it) {
+      var row = document.createElement('div'); row.className = 'li';
+      var sp = document.createElement('span'); sp.textContent = it.name || it.id;
+      var b = document.createElement('button'); b.className = 'btn alt danger'; b.textContent = 'Remove';
+      b.setAttribute('data-act', 'yt.remove'); b.setAttribute('data-id', it.id); b.setAttribute('data-collect', 'no');
+      row.appendChild(sp); row.appendChild(b); yl.appendChild(row);
+    });
   }
 
   async function loadGuild(gid) {
-    banner('');
+    banner('Server data load ho raha hai...');
     try { localStorage.setItem('axiom_guild', gid); } catch (e) {}
     try {
       data = await api('GET', '/api/guilds/' + gid);
       fillSelects(); applyAll(); renderLists();
+      banner('');
     } catch (e) {
       data = null;
-      if (e.data && e.data.botMissing) banner('Bot is server me nahi. <a class="btn" href="' + inviteUrl(gid) + '" target="_blank" rel="noopener">Invite</a>');
-      else if (e.status === 401) { clearToken(); banner('Session expire. <button class="btn" id="reconnectBtn">Reconnect</button>'); }
-      else toast(e.message, true);
+      if (e.data && e.data.botMissing) banner('Bot is server me nahi hai. <a class="btn" href="' + inviteUrl(gid) + '" target="_blank" rel="noopener">Invite bot here</a> <button class="btn alt" id="retryBtn">Retry</button>');
+      else if (e.status === 401) { clearToken(); banner('Discord session expire ho gaya. <button class="btn" id="reconnectBtn">Reconnect Discord</button>'); }
+      else banner('Server data load nahi hua: <b>' + esc(e.message) + '</b> <button class="btn alt" id="retryBtn">Retry</button>');
     }
   }
 
@@ -225,12 +221,18 @@
     if (currentGuild) loadGuild(currentGuild); else { data = null; banner(''); }
   };
 
+  function ready() {
+    if (!currentGuild) { toast('Pehle server select karo.', true); return false; }
+    if (!data) { toast('Server data abhi load nahi hua. Upar ka error dekho aur Retry dabao.', true); return false; }
+    return true;
+  }
+
   function collect() {
     var patch = {};
     qa('[data-f]').forEach(function (el) {
       var p = el.getAttribute('data-f').split('.'), v;
       if (el.type === 'checkbox') v = el.checked;
-      else if (el.hasAttribute('data-list')) v = el.value.split(/[\n,]/).map(function (x) { return x.trim(); }).filter(Boolean);
+      else if (el.hasAttribute('data-list')) v = el.value.split(String.fromCharCode(10)).join(',').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
       else if (el.type === 'number') v = el.value === '' ? '' : Number(el.value);
       else v = el.value;
       (patch[p[0]] = patch[p[0]] || {})[p[1]] = v;
@@ -239,7 +241,7 @@
   }
 
   $('saveBtn').onclick = async function () {
-    if (!currentGuild || !data) { toast('Pehle server select karo.', true); return; }
+    if (!ready()) return;
     var b = $('saveBtn'); b.disabled = true;
     try { await api('PUT', '/api/guilds/' + currentGuild + '/settings', { patch: collect() }); toast('Saved.'); await loadGuild(currentGuild); }
     catch (e) { toast(e.message, true); }
@@ -249,7 +251,7 @@
   document.addEventListener('click', async function (e) {
     var b = e.target.closest('[data-act]');
     if (!b) return;
-    if (!currentGuild || !data) { toast('Pehle server select karo.', true); return; }
+    if (!ready()) return;
     var payload = { action: b.getAttribute('data-act') };
     if (b.getAttribute('data-name')) payload.name = b.getAttribute('data-name');
     if (b.getAttribute('data-id')) payload.id = b.getAttribute('data-id');
