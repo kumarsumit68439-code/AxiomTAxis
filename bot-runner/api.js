@@ -161,7 +161,16 @@ async function safeSend(ch, payload) {
   }
 }
 
+const DATA_IMG = /^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
+
 async function imgData(url) {
+  // Direct upload from the dashboard arrives as a data: URL.
+  if (url.startsWith('data:')) {
+    const m = DATA_IMG.exec(url);
+    if (!m) throw new HttpError(400, 'Upload must be a PNG, JPG, GIF or WEBP image.');
+    if (Buffer.byteLength(m[2], 'base64') > 8 * 1024 * 1024) throw new HttpError(400, 'Image is larger than 8MB.');
+    return url;
+  }
   let u;
   try { u = new URL(url); } catch { throw new HttpError(400, 'Invalid image URL.'); }
   const host = u.hostname.toLowerCase();
@@ -272,7 +281,8 @@ const ACTIONS = {
     } catch (e) {
       throw new HttpError(400, 'Discord rejected the profile update: ' + ((e.rawError && e.rawError.message) || e.message));
     }
-    s.profile = { nick, bio, avatarUrl: av, bannerUrl: bn };
+    // Uploaded images (data: URLs) are not stored in settings, only real URLs are.
+    s.profile = { nick, bio, avatarUrl: av.startsWith('data:') ? '' : av, bannerUrl: bn.startsWith('data:') ? '' : bn };
     return 'Bot profile updated for this server.';
   },
   async 'profile.reset'(guild, b, s) {
@@ -291,10 +301,10 @@ function send(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function readBody(req) {
+function readBody(req, max = 200000) {
   return new Promise((resolve, reject) => {
     let n = 0; const chunks = [];
-    req.on('data', (c) => { n += c.length; if (n > 200000) { reject(new HttpError(413, 'Body too large')); req.destroy(); } else chunks.push(c); });
+    req.on('data', (c) => { n += c.length; if (n > max) { reject(new HttpError(413, 'Body too large')); req.destroy(); } else chunks.push(c); });
     req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString() || '{}')); } catch { reject(new HttpError(400, 'Invalid JSON')); } });
     req.on('error', reject);
   });
@@ -318,7 +328,8 @@ export async function handleApi(req, res, client) {
       return send(res, 200, { ok: true, settings: view(s) });
     }
     if (req.method === 'POST' && sub === 'actions') {
-      const b = await readBody(req);
+      // Bigger limit: profile uploads (avatar + banner) arrive as base64 data URLs. Auth already passed above.
+      const b = await readBody(req, 24 * 1024 * 1024);
       const fn = ACTIONS[b.action];
       if (!fn) throw new HttpError(400, 'Unknown action');
       const message = await fn(guild, b, s);
