@@ -10,15 +10,19 @@
 :root{--bg:#05060a;--card:#0e1019;--line:#222639;--txt:#f0f2f8;--mut:#8b93b2;--accent:#f97316}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(900px 400px at 50% -10%,rgba(249,115,22,.18),transparent),var(--bg);color:var(--txt);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:20px}
-.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:0 20px 70px rgba(0,0,0,.55)}
+.card{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:0 20px 70px rgba(0,0,0,.55)}
 .logo{width:56px;height:56px;border-radius:16px;margin:0 auto 14px;display:grid;place-items:center;background:linear-gradient(135deg,#f97316,#ea580c);font-weight:800;font-size:26px;color:#fff}
-h1{font-size:22px;margin:0 0 6px}p{color:var(--mut);font-size:14px;margin:0 0 20px}
-.cap{display:flex;justify-content:center;margin:10px 0;min-height:65px}
+h1{font-size:22px;margin:0 0 6px}p{color:var(--mut);font-size:14px;margin:0 0 16px;line-height:1.45}
+.cap{display:flex;justify-content:center;margin:10px 0;min-height:70px}
+.lab{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);text-align:left;margin:12px 0 4px}
 button{width:100%;margin-top:16px;padding:13px;border:0;border-radius:12px;background:#5865f2;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
-.msg{min-height:20px;margin-top:12px;font-size:13px;color:var(--mut)}.msg.bad{color:#f87171}
+.msg{min-height:20px;margin-top:12px;font-size:13px;color:var(--mut);white-space:pre-wrap;text-align:left}.msg.bad{color:#f87171}
 .boot{color:var(--mut);font-size:14px}
 .step{font-size:12px;color:var(--mut);margin-top:14px}
+.dbg{margin-top:14px;text-align:left;background:#0a0c12;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--mut);line-height:1.55;display:none}
+.dbg b{color:var(--txt)}
+code{background:#12151f;padding:1px 5px;border-radius:4px;font-size:11px}
 [hidden]{display:none!important}
 </style>
 <script>window.onTsLoad=function(){window.__ts&&window.__ts();};window.onRcLoad=function(){window.__rc&&window.__rc();};</script>
@@ -30,12 +34,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class='card' id='card' hidden>
   <div class='logo'>A</div>
   <h1>AxiomTAxis Dashboard</h1>
-  <p>Private dashboard. Pehle dono security checks complete karo, phir Discord se login karo.</p>
+  <p>Private dashboard. Pehle dono CAPTCHA complete karo, phir Discord se login.</p>
+  <div class='lab'>1 — Cloudflare Turnstile</div>
   <div class='cap'><div id='ts'></div></div>
+  <div class='lab'>2 — Google reCAPTCHA</div>
   <div class='cap'><div id='rc'></div></div>
+  <div class='lab'>3 — Discord</div>
   <button id='go' disabled>Continue with Discord</button>
   <div class='msg' id='msg'></div>
-  <div class='step'>1. Cloudflare + Google verification &nbsp;&rarr;&nbsp; 2. Discord login</div>
+  <div class='dbg' id='dbg'></div>
+  <div class='step'>Cloudflare + Google → Discord login</div>
 </div>
 <script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script>
 <script src='config.js'></script>
@@ -43,23 +51,70 @@ button:disabled{opacity:.45;cursor:not-allowed}
 (function () {
   var cfg = window.AXIOM_CONFIG || {};
   var $ = function (id) { return document.getElementById(id); };
-  var msg = $('msg'), btn = $('go');
+  var msg = $('msg'), btn = $('go'), dbg = $('dbg');
   var tTok = '', rTok = '', tId = null, rId = null;
+  var tsKey = (cfg.TURNSTILE_SITE_KEY || '').trim();
+  var rcKey = (cfg.RECAPTCHA_SITE_KEY || '').trim();
 
   function say(t, bad) { msg.textContent = t || ''; msg.className = 'msg' + (bad ? ' bad' : ''); }
   function sync() { btn.disabled = !(tTok && rTok); }
   function showCard() { $('boot').hidden = true; $('card').hidden = false; }
 
-  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { $('boot').textContent = 'Site not configured (Supabase keys missing).'; return; }
-  var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  function showDbg(extra) {
+    var lines = [];
+    lines.push('<b>CAPTCHA debug</b>');
+    lines.push('Host: <code>' + location.hostname + '</code>');
+    lines.push('config.js: ' + (window.AXIOM_CONFIG ? 'loaded' : 'MISSING'));
+    lines.push('TURNSTILE_SITE_KEY: ' + (tsKey ? ('yes (' + tsKey.slice(0, 6) + '…)') : '<b style=color:#f87171>EMPTY</b>'));
+    lines.push('RECAPTCHA_SITE_KEY: ' + (rcKey ? ('yes (' + rcKey.slice(0, 6) + '…)') : '<b style=color:#f87171>EMPTY</b>'));
+    lines.push('turnstile API: ' + (window.turnstile ? 'ok' : 'not loaded'));
+    lines.push('grecaptcha API: ' + (window.grecaptcha ? 'ok' : 'not loaded'));
+    if (extra) lines.push(extra);
+    lines.push('<br><b>Vercel env set karo:</b>');
+    lines.push('TURNSTILE_SITE_KEY, TURNSTILE_SECRET');
+    lines.push('RECAPTCHA_SITE_KEY, RECAPTCHA_SECRET, GATE_SECRET');
+    lines.push('Google key = <b>v2 Checkbox</b> only (not v3). Domain = this hostname.');
+    lines.push('Phir Redeploy (no cache).');
+    dbg.innerHTML = lines.join('<br>');
+    dbg.style.display = 'block';
+  }
+
+  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
+    $('boot').textContent = 'Site not configured (Supabase keys missing).';
+    return;
+  }
+  var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
 
   window.__ts = function () {
-    if (!cfg.TURNSTILE_SITE_KEY) { say('Cloudflare captcha key not configured.', true); return; }
-    tId = window.turnstile.render('#ts', { sitekey: cfg.TURNSTILE_SITE_KEY, theme: 'dark', callback: function (t) { tTok = t; sync(); }, 'expired-callback': function () { tTok = ''; sync(); }, 'error-callback': function () { tTok = ''; sync(); } });
+    if (!tsKey) { say('Cloudflare site key missing (Vercel env: TURNSTILE_SITE_KEY).', true); showDbg(); return; }
+    if (!window.turnstile) return;
+    try {
+      tId = window.turnstile.render('#ts', {
+        sitekey: tsKey, theme: 'dark',
+        callback: function (t) { tTok = t; sync(); say(''); },
+        'expired-callback': function () { tTok = ''; sync(); },
+        'error-callback': function () { tTok = ''; sync(); say('Cloudflare widget error. Domain whitelist check karo.', true); showDbg('Turnstile error-callback fired.'); }
+      });
+    } catch (e) {
+      say('Cloudflare render fail: ' + (e.message || e), true);
+      showDbg(String(e.message || e));
+    }
   };
   window.__rc = function () {
-    if (!cfg.RECAPTCHA_SITE_KEY) { say('Google reCAPTCHA key not configured.', true); return; }
-    rId = window.grecaptcha.render('rc', { sitekey: cfg.RECAPTCHA_SITE_KEY, theme: 'dark', callback: function (t) { rTok = t; sync(); }, 'expired-callback': function () { rTok = ''; sync(); } });
+    if (!rcKey) { say('Google site key missing (Vercel env: RECAPTCHA_SITE_KEY).', true); showDbg(); return; }
+    if (!window.grecaptcha || !window.grecaptcha.render) return;
+    try {
+      rId = window.grecaptcha.render('rc', {
+        sitekey: rcKey, theme: 'dark',
+        callback: function (t) { rTok = t; sync(); say(''); },
+        'expired-callback': function () { rTok = ''; sync(); }
+      });
+    } catch (e) {
+      say('Google render fail: ' + (e.message || e) + '\nUse reCAPTCHA v2 Checkbox site key (not v3 / not secret key).', true);
+      showDbg(String(e.message || e));
+    }
   };
   if (window.turnstile) window.__ts();
   if (window.grecaptcha && window.grecaptcha.render) window.__rc();
@@ -84,14 +139,24 @@ button:disabled{opacity:.45;cursor:not-allowed}
         var r2 = await fetch('/api/session', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access_token: s.access_token }) });
         if (r2.ok) { window.location.replace('/dashboard.html'); return; }
         var j = await r2.json().catch(function () { return {}; });
-        say(j.error || 'Login check failed. Verify the captchas again.', true);
+        say(j.error || 'Login check failed. Verify captchas again.', true);
       } catch (e) { say('Network error. Try again.', true); }
       try { await sb.auth.signOut(); } catch (e) {}
     }
     showCard();
+    if (!tsKey || !rcKey) {
+      say('CAPTCHA keys Vercel env me missing hain. Neeche debug dekho.', true);
+      showDbg('Keys empty → widgets render nahi honge.');
+    }
+    setTimeout(function () {
+      var tsEmpty = !$('ts').querySelector('iframe, div');
+      var rcEmpty = !$('rc').querySelector('iframe, div, .g-recaptcha');
+      if ((tsEmpty || rcEmpty) && (!tTok || !rTok)) showDbg((tsEmpty ? 'Turnstile DOM empty. ' : '') + (rcEmpty ? 'reCAPTCHA DOM empty.' : ''));
+    }, 4000);
   }
 
   btn.onclick = async function () {
+    if (!tTok || !rTok) { say('Pehle dono CAPTCHA complete karo.', true); return; }
     btn.disabled = true; say('Verifying...');
     try {
       var r = await fetch('/api/gate', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turnstile: tTok, recaptcha: rTok }) });
