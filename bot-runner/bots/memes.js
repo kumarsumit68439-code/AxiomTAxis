@@ -5,19 +5,19 @@ export const commands = [
   { name: 'meme', description: 'Random meme', dm_permission: false },
   {
     name: 'memes',
-    description: 'Auto memes by source every N seconds',
+    description: 'Auto memes every N seconds (locked source/country/type)',
     default_member_permissions: MANAGE,
     dm_permission: false,
     options: [
       {
         name: 'set',
-        description: 'Enable auto memes — posts start immediately',
+        description: 'Enable auto memes — posts start and keep repeating',
         type: 1,
         options: [
           { name: 'channel', description: 'Memes channel', type: 7, required: true, channel_types: [ChannelType.GuildText] },
           {
             name: 'source',
-            description: 'ONLY this source will be used',
+            description: 'Media source (locked)',
             type: 3,
             required: true,
             choices: [
@@ -25,6 +25,32 @@ export const commands = [
               { name: 'Reddit images/videos only', value: 'reddit' },
               { name: 'Google-style images only', value: 'google' },
               { name: 'All sources mixed', value: 'all' }
+            ]
+          },
+          {
+            name: 'country',
+            description: 'Country / region (locked)',
+            type: 3,
+            required: true,
+            choices: [
+              { name: 'India', value: 'india' },
+              { name: 'USA', value: 'usa' },
+              { name: 'UK', value: 'uk' },
+              { name: 'Global (all countries)', value: 'global' }
+            ]
+          },
+          {
+            name: 'type',
+            description: 'Meme style (locked)',
+            type: 3,
+            required: true,
+            choices: [
+              { name: 'Funny / comedy', value: 'funny' },
+              { name: 'CID / crime show memes (India)', value: 'cid' },
+              { name: 'Roast / gali style', value: 'roast' },
+              { name: 'Dank', value: 'dank' },
+              { name: 'Wholesome', value: 'wholesome' },
+              { name: 'All types', value: 'any' }
             ]
           },
           {
@@ -48,28 +74,93 @@ const UA = {
   accept: 'application/json'
 };
 
-const REDDIT_SUBS = ['memes','dankmemes','IndianDankMemes','indianmemes','IndianMeyMeys','bakchodi','funny','me_irl'];
-const YT_QUERIES = [
-  'indian memes funny',
-  'desi memes hindi',
-  'viral indian meme',
-  'funny memes short',
-  'hindi comedy meme',
-  'dank indian memes'
-];
+const SUBS = {
+  india: {
+    funny: ['indianmemes', 'IndianDankMemes', 'IndianMeyMeys', 'bakchodi', 'SaimanSays'],
+    cid: ['IndianDankMemes', 'indianmemes', 'bollywoodmemes', 'bakchodi'],
+    roast: ['IndianDankMemes', 'bakchodi', 'IndianMeyMeys'],
+    dank: ['IndianDankMemes', 'IndianMeyMeys'],
+    wholesome: ['wholesomememes', 'indianmemes'],
+    any: ['IndianDankMemes', 'indianmemes', 'bakchodi', 'IndianMeyMeys', 'SaimanSays']
+  },
+  usa: {
+    funny: ['memes', 'funny', 'me_irl'],
+    cid: ['memes', 'dankmemes'],
+    roast: ['roastme', 'dankmemes'],
+    dank: ['dankmemes', 'okbuddyretard'],
+    wholesome: ['wholesomememes'],
+    any: ['memes', 'dankmemes', 'funny']
+  },
+  uk: {
+    funny: ['britishproblems', 'memes', 'funny'],
+    cid: ['memes'],
+    roast: ['roastme', 'dankmemes'],
+    dank: ['dankmemes'],
+    wholesome: ['wholesomememes'],
+    any: ['memes', 'funny', 'britishproblems']
+  },
+  global: {
+    funny: ['memes', 'funny', 'me_irl', 'IndianDankMemes'],
+    cid: ['IndianDankMemes', 'memes'],
+    roast: ['dankmemes', 'roastme', 'bakchodi'],
+    dank: ['dankmemes', 'okbuddyretard', 'IndianDankMemes'],
+    wholesome: ['wholesomememes'],
+    any: ['memes', 'dankmemes', 'IndianDankMemes', 'funny', 'me_irl']
+  }
+};
+
+const YT_Q = {
+  india: {
+    funny: ['indian funny memes', 'desi comedy memes', 'hindi funny video memes'],
+    cid: ['CID memes india', 'cid acp pradyuman meme', 'cid funny moments meme'],
+    roast: ['indian roast meme', 'desi gali comedy meme', 'hindi roast funny'],
+    dank: ['indian dank memes', 'desi dank meme'],
+    wholesome: ['indian wholesome meme'],
+    any: ['indian memes funny', 'desi memes', 'hindi meme compilation']
+  },
+  usa: {
+    funny: ['funny memes', 'american memes'],
+    cid: ['crime meme funny'],
+    roast: ['roast memes'],
+    dank: ['dank memes'],
+    wholesome: ['wholesome memes'],
+    any: ['funny memes compilation']
+  },
+  uk: {
+    funny: ['british memes funny'],
+    cid: ['british comedy meme'],
+    roast: ['british roast meme'],
+    dank: ['uk dank memes'],
+    wholesome: ['wholesome memes'],
+    any: ['british memes']
+  },
+  global: {
+    funny: ['funny memes', 'comedy memes'],
+    cid: ['crime show memes', 'CID memes india'],
+    roast: ['roast memes funny'],
+    dank: ['dank memes'],
+    wholesome: ['wholesome memes'],
+    any: ['viral memes', 'funny memes compilation', 'indian memes']
+  }
+};
 
 function isImage(url) {
   return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(String(url || ''));
 }
 
 function extractYtId(s) {
-  const m = String(s || '').match(/(?:v=|youtu\.be\/|shorts\/|\/watch\?v=)?([A-Za-z0-9_-]{11})/);
-  return m && /^[A-Za-z0-9_-]{11}$/.test(m[1]) ? m[1] : null;
+  const m = String(s || '').match(/(?:\/watch\?v=|youtu\.be\/|shorts\/|v=)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
 }
 
-async function fromReddit() {
-  const sub = REDDIT_SUBS[Math.floor(Math.random() * REDDIT_SUBS.length)];
-  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=40', { headers: UA });
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function fromReddit(country, type) {
+  const subs = (SUBS[country] || SUBS.global)[type] || SUBS.global.any;
+  const sub = pick(subs);
+  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=50', { headers: UA });
   if (!r.ok) return null;
   const j = await r.json();
   const posts = (j.data && j.data.children || []).map((c) => c.data).filter((p) => p && !p.over_18 && !p.spoiler);
@@ -77,24 +168,21 @@ async function fromReddit() {
   for (const p of posts) {
     const link = p.url_overridden_by_dest || p.url || '';
     if (p.is_video && p.media && p.media.reddit_video && p.media.reddit_video.fallback_url) {
-      out.push({ kind: 'video', title: p.title, url: p.media.reddit_video.fallback_url.split('?')[0], source: 'Reddit · r/' + p.subreddit });
+      out.push({ kind: 'video', title: p.title, url: p.media.reddit_video.fallback_url.split('?')[0], key: p.id, source: 'Reddit · r/' + p.subreddit });
       continue;
     }
     if (isImage(link) || p.post_hint === 'image') {
-      out.push({ kind: 'image', title: p.title, url: link, source: 'Reddit · r/' + p.subreddit });
+      out.push({ kind: 'image', title: p.title, url: link, key: p.id, source: 'Reddit · r/' + p.subreddit });
     }
   }
   if (!out.length) return null;
-  return out[Math.floor(Math.random() * out.length)];
+  return pick(out);
 }
 
-async function fromYouTube() {
-  const q = YT_QUERIES[Math.floor(Math.random() * YT_QUERIES.length)];
-  const bases = [
-    'https://api.piped.private.coffee/search?q=',
-    'https://pipedapi.adminforge.de/search?q='
-  ];
-  for (const base of bases) {
+async function fromYouTube(country, type) {
+  const qs = (YT_Q[country] || YT_Q.global)[type] || YT_Q.global.any;
+  const q = pick(qs);
+  for (const base of ['https://api.piped.private.coffee/search?q=', 'https://pipedapi.adminforge.de/search?q=']) {
     try {
       const r = await fetch(base + encodeURIComponent(q) + '&filter=videos', {
         headers: UA,
@@ -106,35 +194,39 @@ async function fromYouTube() {
       const vids = [];
       for (const v of items) {
         if (v.type && v.type !== 'stream' && v.type !== 'video') continue;
-        const id = extractYtId(v.url) || extractYtId(v.id) || extractYtId(v.videoId);
+        const id = extractYtId(v.url) || (typeof v.id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v.id) ? v.id : null);
         if (!id) continue;
         vids.push({
           kind: 'youtube',
-          title: v.title || v.name || q,
+          title: v.title || q,
           url: 'https://www.youtube.com/watch?v=' + id,
+          key: id,
           source: 'YouTube · ' + q,
-          thumb: v.thumbnail || null
+          thumb: typeof v.thumbnail === 'string' ? v.thumbnail : null
         });
       }
-      if (vids.length) {
-        console.log('memes yt ok', q, vids.length);
-        return vids[Math.floor(Math.random() * Math.min(vids.length, 15))];
-      }
+      if (vids.length) return pick(vids.slice(0, 15));
     } catch (e) {
-      console.warn('memes yt', base, e.message);
+      console.warn('memes yt', e.message);
     }
   }
   return null;
 }
 
-async function fromGoogle() {
+async function fromGoogle(country, type) {
+  const subMap = {
+    india: ['IndianDankMemes', 'indianmemes'],
+    usa: ['memes', 'dankmemes'],
+    uk: ['memes'],
+    global: ['memes', 'dankmemes', 'IndianDankMemes']
+  };
   try {
-    const sub = ['memes', 'dankmemes', 'IndianDankMemes'][Math.floor(Math.random() * 3)];
+    const sub = pick(subMap[country] || subMap.global);
     const r = await fetch('https://meme-api.com/gimme/' + sub, { headers: UA });
     if (r.ok) {
       const m = await r.json();
       if (m && m.url && !m.nsfw && isImage(m.url)) {
-        return { kind: 'image', title: m.title || 'Meme', url: m.url, source: 'Google-style · images' };
+        return { kind: 'image', title: m.title || 'Meme', url: m.url, key: m.postLink || m.url, source: 'Google-style · r/' + sub };
       }
     }
   } catch {}
@@ -144,30 +236,41 @@ async function fromGoogle() {
       const j = await r.json();
       const memes = (j.data && j.data.memes) || [];
       if (memes.length) {
-        const m = memes[Math.floor(Math.random() * Math.min(40, memes.length))];
-        return { kind: 'image', title: m.name || 'Meme', url: m.url, source: 'Google-style · Imgflip' };
+        const m = pick(memes.slice(0, 40));
+        return { kind: 'image', title: m.name || 'Meme', url: m.url, key: m.id || m.url, source: 'Google-style · Imgflip' };
       }
     }
   } catch {}
   return null;
 }
 
-async function getMeme(source) {
-  const src = String(source || 'all').toLowerCase();
-  const attempts = src === 'youtube' ? 8 : 5;
-  for (let i = 0; i < attempts; i++) {
+async function getMeme(cfg, used) {
+  const source = (cfg && cfg.source) || 'all';
+  const country = (cfg && cfg.country) || 'global';
+  const type = (cfg && cfg.type) || 'any';
+  for (let i = 0; i < 10; i++) {
     try {
       let m = null;
-      if (src === 'youtube') m = await fromYouTube();
-      else if (src === 'reddit') m = await fromReddit();
-      else if (src === 'google') m = await fromGoogle();
+      if (source === 'youtube') m = await fromYouTube(country, type);
+      else if (source === 'reddit') m = await fromReddit(country, type);
+      else if (source === 'google') m = await fromGoogle(country, type);
       else {
-        const fns = [fromReddit, fromYouTube, fromGoogle];
-        m = await fns[i % fns.length]();
+        const fns = [fromYouTube, fromReddit, fromGoogle];
+        m = await fns[i % 3](country, type);
       }
-      if (m && m.url) return m;
+      if (!m || !m.url) continue;
+      const key = String(m.key || m.url);
+      if (used && used.has(key)) continue;
+      if (used) {
+        used.add(key);
+        if (used.size > 80) {
+          const first = used.values().next().value;
+          used.delete(first);
+        }
+      }
+      return m;
     } catch (e) {
-      console.warn('getMeme', src, e.message);
+      console.warn('getMeme', e.message);
     }
   }
   return null;
@@ -207,6 +310,7 @@ async function sendMeme(channel, m) {
 
 export function attach(client) {
   const last = new Map();
+  const usedMap = new Map();
 
   async function postOnce(guildId, force) {
     const s = await getSettings(guildId);
@@ -220,19 +324,17 @@ export function attach(client) {
     if (!guild) return;
     const ch = guild.channels.cache.get(c.channelId);
     if (!ch || !ch.isTextBased()) return;
-    const m = await getMeme(c.source || 'all');
-    if (m) {
-      await sendMeme(ch, m).catch((e) => console.error('meme send', e.message));
-    } else {
-      console.warn('memes: no result source=' + (c.source || 'all'));
-    }
+    if (!usedMap.has(guildId)) usedMap.set(guildId, new Set());
+    const m = await getMeme(c, usedMap.get(guildId));
+    if (m) await sendMeme(ch, m).catch((e) => console.error('meme send', e.message));
+    else console.warn('memes: no unique result', c.source, c.country, c.type);
   }
 
   client.on(Events.InteractionCreate, async (i) => {
     try {
       if (i.isChatInputCommand() && i.commandName === 'meme') {
         await i.deferReply();
-        const m = await getMeme('all');
+        const m = await getMeme({ source: 'all', country: 'global', type: 'any' }, new Set());
         if (!m) return i.editReply('Meme nahi mila.');
         if (m.kind === 'youtube') return i.editReply({ content: '**' + String(m.title).slice(0, 180) + '**\n' + m.url + '\n_' + m.source + '_' });
         if (m.kind === 'video') {
@@ -251,19 +353,24 @@ export function attach(client) {
       if (sub === 'set') {
         const ch = i.options.getChannel('channel', true);
         const source = i.options.getString('source', true);
+        const country = i.options.getString('country', true);
+        const type = i.options.getString('type', true);
         const seconds = i.options.getInteger('seconds') || 20;
         s.memes = {
           enabled: true,
           channelId: ch.id,
           source,
+          country,
+          type,
           intervalSec: Math.max(15, Math.min(3600, seconds))
         };
         await saveSettings(i.guildId, s);
+        usedMap.set(i.guildId, new Set());
         await i.reply({
           content:
             'Auto memes **ON** ' + ch + '\n' +
-            'Source locked: **' + source + '**\n' +
-            'Every **' + s.memes.intervalSec + 's** — posting now…',
+            'Source: **' + source + '** · Country: **' + country + '** · Type: **' + type + '**\n' +
+            'Every **' + s.memes.intervalSec + 's** (unique, repeating) — posting now…',
           flags: MessageFlags.Ephemeral
         });
         postOnce(i.guildId, true).catch((e) => console.error('meme first', e.message));
@@ -280,7 +387,9 @@ export function attach(client) {
           content:
             '**Auto Memes**\nEnabled: ' + (c && c.enabled ? 'Yes' : 'No') +
             '\nChannel: ' + (c && c.channelId ? '<#' + c.channelId + '>' : '—') +
-            '\nSource: **' + ((c && c.source) || 'all') + '**' +
+            '\nSource: **' + ((c && c.source) || '—') + '**' +
+            '\nCountry: **' + ((c && c.country) || '—') + '**' +
+            '\nType: **' + ((c && c.type) || '—') + '**' +
             '\nInterval: ' + ((c && c.intervalSec) || 20) + 's',
           flags: MessageFlags.Ephemeral
         });
@@ -290,11 +399,14 @@ export function attach(client) {
     }
   });
 
-  client.once(Events.ClientReady, () => {
+  function startLoop() {
+    console.log('memes: auto-post loop started');
     setInterval(async () => {
       for (const g of client.guilds.cache.values()) {
         try { await postOnce(g.id, false); } catch (e) { console.error('memes tick', e.message); }
       }
     }, 5000);
-  });
+  }
+  if (client.isReady()) startLoop();
+  else client.once(Events.ClientReady, startLoop);
 }
