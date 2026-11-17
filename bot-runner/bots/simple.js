@@ -18,14 +18,23 @@ export const commands = [
 ];
 
 const HELP = [
-  '**AxiomTAxis**',
-  '`/play song` - YouTube music (optional: channel to join by ID/select)',
-  '`/join #vc` - Join a voice channel by ID or selection',
-  '`/stop` - Stop music and leave',
-  '`/c name` - run a custom command (`/command add|remove|list` to manage)',
-  '`/ai channel #chat` - AI replies in that channel without mention (`/ai model`, `/ai prompt`, `/ai off`)',
-  '`/welcome set #channel` - welcome new members',
-  '`/ping`'
+  '**AxiomTAxis — Discord commands**',
+  'Most modules website se bhi set hote hain: https://axiomtaxis-website.vercel.app/dashboard.html',
+  '',
+  '**Music:** `/play` `/join` `/stop`',
+  '**AI:** `/ai channel` `/ai off` `/ai status` (ek baar channel set = permanent)',
+  '**Welcome:** `/welcome set|leave|off|status`',
+  '**Counting:** `/counting set|off|reset|status`',
+  '**Level:** `/level rank|leaderboard|set|off`',
+  '**Ticket:** `/ticket setup|off|status`',
+  '**Verification:** `/verification setup|off|status`',
+  '**Logging:** `/logging set|off|status`',
+  '**Memes:** `/meme` + `/memes set|off|status` (auto every N min)',
+  '**Suggestions:** `/suggest`',
+  '**Triggers:** `/c name` + `/command add|remove|list`',
+  '**Other:** `/ping` `/help`',
+  '',
+  'AutoMod / AntiNuke / AntiRaid / YT / Profile → website dashboard only.'
 ].join('\n');
 
 export function attach(client) {
