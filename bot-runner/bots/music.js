@@ -32,10 +32,7 @@ function slimYtCookie(raw) {
 }
 
 function applyCookie(cookie) {
-  try {
-    if (cookie) play.setToken({ youtube: { cookie } });
-    else play.setToken({ youtube: { cookie: '' } });
-  } catch {}
+  try { play.setToken({ youtube: { cookie: cookie || '' } }); } catch {}
 }
 
 const ytCookie = slimYtCookie(process.env.YT_COOKIE || '');
@@ -71,25 +68,32 @@ const fmt = (s) => {
 function extractId(input) {
   const s = String(input || '').trim();
   if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
-  const m = s.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/) ||
+  const m =
+    s.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/|\/watch\?v=)([A-Za-z0-9_-]{11})/) ||
     s.match(/[?&]v=([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
 }
 const watchUrl = (id) => 'https://www.youtube.com/watch?v=' + id;
 
-async function searchExternal(q) {
-  for (const base of ['https://pipedapi.kavin.rocks/search?q=', 'https://invidious.fdn.fr/api/v1/search?q=']) {
+const PIPED = [
+  'https://api.piped.private.coffee/search?q=',
+  'https://pipedapi.adminforge.de/search?q='
+];
+
+async function searchPiped(q) {
+  for (const base of PIPED) {
     try {
-      const r = await fetch(base + encodeURIComponent(q), { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
+      const r = await fetch(base + encodeURIComponent(q) + '&filter=videos', {
+        headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
+        signal: AbortSignal.timeout(12000)
+      });
       if (!r.ok) continue;
-      const list = await r.json();
-      const arr = Array.isArray(list) ? list : (list.items || []);
-      for (const v of arr.slice(0, 15)) {
-        let vid = v.videoId || v.id;
-        if (!vid && v.url) vid = extractId(v.url);
+      const data = await r.json();
+      const items = Array.isArray(data) ? data : data.items || [];
+      for (const v of items) {
+        if (v.type && v.type !== 'stream' && v.type !== 'video') continue;
+        const vid = extractId(v.url) || extractId(v.id) || extractId(v.videoId);
         if (!vid) continue;
-        vid = String(vid).slice(0, 11);
-        if (!/^[A-Za-z0-9_-]{11}$/.test(vid)) continue;
         return {
           title: v.title || v.name || q,
           url: watchUrl(vid),
@@ -97,7 +101,9 @@ async function searchExternal(q) {
           thumb: v.thumbnail || null
         };
       }
-    } catch {}
+    } catch (e) {
+      console.warn('piped search', base, e.message);
+    }
   }
   return null;
 }
@@ -105,47 +111,45 @@ async function searchExternal(q) {
 async function resolveVideo(query) {
   const q = String(query || '').trim();
   if (!q) throw new Error('Empty query');
+
   const id = extractId(q);
   if (id) {
     try {
       const info = await play.video_info(watchUrl(id));
       const v = info.video_details;
-      return { title: (v && v.title) || 'Unknown', url: watchUrl(id), dur: Number(v && v.durationInSec) || 0, thumb: v && v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url };
+      return {
+        title: (v && v.title) || 'Unknown',
+        url: watchUrl(id),
+        dur: Number(v && v.durationInSec) || 0,
+        thumb: v && v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url
+      };
     } catch {
       return { title: 'YouTube', url: watchUrl(id), dur: 0, thumb: null };
     }
   }
 
-  const trySearch = async () => {
-    for (const qq of [q, q + ' song', q + ' official audio']) {
-      try {
-        const found = await play.search(qq, { limit: 8, source: { youtube: 'video' } });
-        for (const v of found || []) {
-          const vid = extractId(v.url) || extractId(v.id);
-          if (!vid) continue;
-          return { title: v.title || q, url: watchUrl(vid), dur: Number(v.durationInSec) || 0, thumb: v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url };
-        }
-      } catch (e) {
-        if (/Header overflow|Parse Error/i.test(String(e.message))) throw e;
-      }
-    }
-    return null;
-  };
-
-  let track = null;
-  try {
-    track = await trySearch();
-  } catch (e) {
-    if (/Header overflow|Parse Error/i.test(String(e.message))) {
-      console.warn('search overflow — retry without cookie');
-      applyCookie('');
-      try { track = await trySearch(); } catch {}
-      if (ytCookie) applyCookie(ytCookie);
-    }
+  for (const qq of [q, q + ' song', q + ' official audio']) {
+    const t = await searchPiped(qq);
+    if (t) return t;
   }
-  if (!track) track = await searchExternal(q);
-  if (!track) throw new Error('Song nahi mila: ' + q + ' — full YouTube link try karo');
-  return track;
+
+  try {
+    const found = await play.search(q, { limit: 8, source: { youtube: 'video' } });
+    for (const v of found || []) {
+      const vid = extractId(v.url) || extractId(v.id);
+      if (!vid) continue;
+      return {
+        title: v.title || q,
+        url: watchUrl(vid),
+        dur: Number(v.durationInSec) || 0,
+        thumb: v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url
+      };
+    }
+  } catch (e) {
+    console.warn('play-dl search', e.message);
+  }
+
+  throw new Error('Song nahi mila: ' + q + ' — pure YouTube link se try karo');
 }
 
 export function attach(client) {
@@ -156,20 +160,25 @@ export function attach(client) {
     const t = st.track, p = Math.min(pos(st), t.dur || 0), len = 20;
     const at = t.dur ? Math.min(len - 1, Math.floor((p / t.dur) * len)) : 0;
     const bar = '▬'.repeat(at) + '🔘' + '▬'.repeat(len - 1 - at);
-    const e = new EmbedBuilder().setColor(0xf97316)
+    const e = new EmbedBuilder()
+      .setColor(0xf97316)
       .setTitle(ended ? 'Finished: ' + t.title : (st.paused ? '⏸ ' : '▶ ') + t.title)
-      .setURL(t.url).setDescription(bar + '\n`' + fmt(p) + ' / ' + fmt(t.dur) + '`')
+      .setURL(t.url)
+      .setDescription(bar + '\n`' + fmt(p) + ' / ' + fmt(t.dur) + '`')
       .setFooter({ text: 'Requested by ' + t.by });
     if (t.thumb) e.setThumbnail(t.thumb);
     return e;
   }
+
   const row = (st) => new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('mp:back').setLabel('⏪ 10s').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('mp:pause').setLabel(st.paused ? '▶ Resume' : '⏸ Pause').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId('mp:fwd').setLabel('10s ⏩').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('mp:stop').setLabel('⏹ Stop').setStyle(ButtonStyle.Danger)
   );
-  const refresh = (st, ended) => st.msg && st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : [row(st)] }).catch(() => {});
+
+  const refresh = (st, ended) =>
+    st.msg && st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : [row(st)] }).catch(() => {});
 
   function destroy(guildId) {
     const st = guilds.get(guildId);
@@ -193,13 +202,11 @@ export function attach(client) {
       stream = await tryStream();
     } catch (e) {
       if (/Header overflow|Parse Error/i.test(String(e.message))) {
-        console.warn('stream overflow — retry without cookie');
         applyCookie('');
-        try {
-          stream = await tryStream();
-        } catch (e2) {
+        try { stream = await tryStream(); }
+        catch (e2) {
           if (ytCookie) applyCookie(ytCookie);
-          throw new Error('Stream header overflow. Ensure start uses --max-http-header-size=65536. ' + String(e2.message).slice(0, 80));
+          throw new Error('Stream fail: ' + String(e2.message).slice(0, 120));
         }
         if (ytCookie) applyCookie(ytCookie);
       } else {
@@ -213,7 +220,9 @@ export function attach(client) {
   }
 
   function create(guild, vc) {
-    const connection = joinVoiceChannel({ channelId: vc.id, guildId: guild.id, adapterCreator: guild.voiceAdapterCreator, selfDeaf: true });
+    const connection = joinVoiceChannel({
+      channelId: vc.id, guildId: guild.id, adapterCreator: guild.voiceAdapterCreator, selfDeaf: true
+    });
     const player = createAudioPlayer();
     connection.subscribe(player);
     const st = { connection, player, channelId: vc.id, offset: 0, playStart: null, paused: false, track: null, msg: null, timer: null };
@@ -221,7 +230,10 @@ export function attach(client) {
     player.on('error', (e) => { console.error('player', e.message); if (guilds.get(guild.id) === st) destroy(guild.id); });
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
       try {
-        await Promise.race([entersState(connection, VoiceConnectionStatus.Signalling, 5000), entersState(connection, VoiceConnectionStatus.Connecting, 5000)]);
+        await Promise.race([
+          entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+          entersState(connection, VoiceConnectionStatus.Connecting, 5000)
+        ]);
       } catch { if (guilds.get(guild.id) === st) destroy(guild.id); }
     });
     guilds.set(guild.id, st);
@@ -238,6 +250,7 @@ export function attach(client) {
     if (vc) return { channel: vc };
     return { error: 'Voice channel me join karo.' };
   }
+
   function canJoin(channel, me) {
     if (!channel || !me) return 'Channel/bot missing.';
     const p = channel.permissionsFor(me);
@@ -287,7 +300,8 @@ export function attach(client) {
     } else if (i.isButton() && i.customId.startsWith('mp:')) {
       const st = guilds.get(i.guildId);
       if (!st || !st.track) return i.reply({ content: 'Kuch play nahi.', flags: MessageFlags.Ephemeral });
-      if (!i.member.voice.channelId || i.member.voice.channelId !== st.channelId) return i.reply({ content: 'Bot ke VC me aao.', flags: MessageFlags.Ephemeral });
+      if (!i.member.voice.channelId || i.member.voice.channelId !== st.channelId)
+        return i.reply({ content: 'Bot ke VC me aao.', flags: MessageFlags.Ephemeral });
       i.deferUpdate().then(async () => {
         const act = i.customId.slice(3);
         try {
