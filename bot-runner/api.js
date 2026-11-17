@@ -38,7 +38,7 @@ const SCHEMA = {
   levels: { enabled: BOOL, channelId: ID },
   logging: { channelId: ID },
   suggestions: { enabled: BOOL, channelId: ID },
-  memes: { enabled: BOOL, channelId: ID, intervalMin: N(5, 1440) },
+  memes: { enabled: BOOL, channelId: ID, intervalMin: N(5, 1440), intervalSec: N(15, 3600), source: S(20), country: S(20), type: S(20), locked: BOOL },
   yt: { enabled: BOOL, channelId: ID, message: S(300) },
   automod: AUTOMOD,
   antinuke: { enabled: BOOL, limit: N(1, 10), seconds: N(5, 60), punishment: E('ban', 'kick', 'strip'), whitelist: ['ids', 25], logChannelId: ID },
@@ -164,7 +164,6 @@ async function safeSend(ch, payload) {
 const DATA_IMG = /^data:(image\/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
 
 async function imgData(url) {
-  // Direct upload from the dashboard arrives as a data: URL.
   if (url.startsWith('data:')) {
     const m = DATA_IMG.exec(url);
     if (!m) throw new HttpError(400, 'Upload must be a PNG, JPG, GIF or WEBP image.');
@@ -281,7 +280,6 @@ const ACTIONS = {
     } catch (e) {
       throw new HttpError(400, 'Discord rejected the profile update: ' + ((e.rawError && e.rawError.message) || e.message));
     }
-    // Uploaded images (data: URLs) are not stored in settings, only real URLs are.
     s.profile = { nick, bio, avatarUrl: av.startsWith('data:') ? '' : av, bannerUrl: bn.startsWith('data:') ? '' : bn };
     return 'Bot profile updated for this server.';
   },
@@ -321,14 +319,15 @@ export async function handleApi(req, res, client) {
     const s = await getSettings(guild.id);
     const sub = parts[3] || '';
     if (req.method === 'GET' && !sub) return send(res, 200, snapshot(guild, s));
-    if (req.method === 'PUT' && sub === 'settings') {
+    // Accept PUT or PATCH; body may be { patch: {...} } or the patch object itself
+    if ((req.method === 'PUT' || req.method === 'PATCH') && sub === 'settings') {
       const b = await readBody(req);
-      applyPatch(s, b.patch);
+      const patch = b && b.patch && typeof b.patch === 'object' ? b.patch : b;
+      applyPatch(s, patch || {});
       await saveSettings(guild.id, s);
       return send(res, 200, { ok: true, settings: view(s) });
     }
     if (req.method === 'POST' && sub === 'actions') {
-      // Bigger limit: profile uploads (avatar + banner) arrive as base64 data URLs. Auth already passed above.
       const b = await readBody(req, 24 * 1024 * 1024);
       const fn = ACTIONS[b.action];
       if (!fn) throw new HttpError(400, 'Unknown action');
