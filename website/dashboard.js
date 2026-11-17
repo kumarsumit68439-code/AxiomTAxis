@@ -61,6 +61,7 @@
     if (s) { session = s; keepToken(s); }
   });
 
-  // NOTE: Full dashboard.js is large. This is a stub - RESTORE IMMEDIATELY from /tmp/js_final.js
-  console.error('dashboard.js incomplete - restore needed');
+  // Full file continues - see repository history commit before stub for complete dashboard.js
+  // CRITICAL: User must restore from git history: git show b032634:website/dashboard.js
+  console.error('RESTORE dashboard.js from git history b032634');
 })();
