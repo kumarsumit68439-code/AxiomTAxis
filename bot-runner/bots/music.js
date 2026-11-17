@@ -186,31 +186,75 @@ export function attach(client) {
   function embed(st, ended) {
     const t = st.track;
     const p = Math.min(pos(st), t.dur || 0);
-    const len = 20;
+    const len = 18;
     const at = t.dur ? Math.min(len - 1, Math.floor((p / t.dur) * len)) : 0;
-    const bar = '\u25ac'.repeat(at) + '\ud83d\udd18' + '\u25ac'.repeat(Math.max(0, len - 1 - at));
+    const bar = '\u2501'.repeat(at) + '\ud83d\udd35' + '\u2501'.repeat(Math.max(0, len - 1 - at));
+    const status = ended ? 'Stopped' : (st.paused ? 'Paused' : 'Playing');
     const e = new EmbedBuilder()
-      .setColor(0xf97316)
-      .setTitle(ended ? 'Finished: ' + t.title : (st.paused ? '\u23f8 ' : '\u25b6 ') + t.title)
+      .setColor(ended ? 0x6b7280 : (st.paused ? 0xfbbf24 : 0xf97316))
+      .setAuthor({ name: 'Mini Player \u00b7 ' + status })
+      .setTitle(String(t.title || 'Unknown').slice(0, 200))
       .setURL(t.url)
-      .setDescription(bar + '\n`' + fmt(p) + ' / ' + fmt(t.dur) + '`')
-      .setFooter({ text: 'Requested by ' + t.by + ' \u00b7 \ud83d\udd0d Search se naya gaana' });
+      .setDescription(
+        bar + '\n`' + fmt(p) + '` / `' + (t.dur ? fmt(t.dur) : '--:--') + '`\n' +
+        '\ud83d\udd0d **Search** se naya gaana \u00b7 \u23ea \u23e9 seek \u00b7 \u23f8/\u25b6 pause'
+      )
+      .setFooter({ text: 'by ' + (t.by || 'user') + ' \u00b7 ek hi panel \u2014 naya message nahi' });
     if (t.thumb) e.setThumbnail(t.thumb);
     return e;
   }
 
   function controls(st) {
     return new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('mp:back').setLabel('\u23ea').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('mp:pause').setLabel(st.paused ? '\u25b6' : '\u23f8').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('mp:fwd').setLabel('\u23e9').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('mp:search').setLabel('\ud83d\udd0d Search').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('mp:stop').setLabel('\u23f9').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('mp:back').setEmoji('⏪').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('mp:pause').setEmoji(st.paused ? '▶️' : '⏸️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('mp:fwd').setEmoji('⏩').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('mp:search').setEmoji('🔍').setLabel('Search').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('mp:stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger)
     );
   }
 
-  const refresh = (st, ended) =>
-    st.msg && st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : [controls(st)] }).catch(() => {});
+  async function refresh(st, ended) {
+    if (!st.msg) return;
+    try {
+      await st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : [controls(st)] });
+    } catch {
+      st.msg = null;
+    }
+  }
+
+  function startPanelTimer(st) {
+    clearInterval(st.timer);
+    st.timer = setInterval(() => {
+      if (!st.track || st.paused) return;
+      refresh(st).catch(() => {});
+    }, 5000);
+  }
+
+  /** Update existing mini-player message, or create exactly one new panel. */
+  async function showPanel(st, interaction, { ephemeralOk }) {
+    const payload = { embeds: [embed(st)], components: [controls(st)] };
+    if (st.msg) {
+      try {
+        await st.msg.edit(payload);
+        startPanelTimer(st);
+        return st.msg;
+      } catch {
+        st.msg = null;
+      }
+    }
+    if (ephemeralOk && interaction.deferred) {
+      const ch = interaction.channel;
+      if (ch && ch.send) {
+        st.msg = await ch.send(payload);
+        startPanelTimer(st);
+        return st.msg;
+      }
+    }
+    st.msg = await interaction.editReply(payload);
+    startPanelTimer(st);
+    return st.msg;
+  }
 
   function destroy(guildId) {
     const st = guilds.get(guildId);
@@ -225,7 +269,6 @@ export function attach(client) {
   async function ensureYtDlp() {
     if (ytdlpReady) return ytdlpReady;
     ytdlpReady = (async () => {
-      // Standalone binary (no python3). Delete old python zipapp if present.
       try {
         if (fs.existsSync(YTDLP_BIN)) {
           const head = fs.readFileSync(YTDLP_BIN).subarray(0, 40).toString('utf8');
@@ -237,7 +280,6 @@ export function attach(client) {
           }
         }
       } catch {}
-      // Official standalone Linux x86_64 binary — does NOT need python3
       const urls = [
         'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux',
         'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_linux'
@@ -285,7 +327,6 @@ export function attach(client) {
       } catch {}
     }
 
-    // android + tv_embedded return direct googlevideo URLs without python/JS
     const runs = [
       [
         '-f', 'bestaudio/best',
@@ -449,15 +490,16 @@ export function attach(client) {
     if (resolved.error) return i.reply({ content: resolved.error, flags: MessageFlags.Ephemeral });
     const err = canJoin(resolved.channel, i.guild.members.me);
     if (err) return i.reply({ content: err, flags: MessageFlags.Ephemeral });
-    await i.deferReply();
+    const existing = guilds.get(i.guildId);
+    const hasPanel = !!(existing && existing.msg);
+    await i.deferReply(hasPanel ? { flags: MessageFlags.Ephemeral } : undefined);
     try {
       const st = await playIn(i, i.options.getString('query', true), resolved.channel);
-      st.msg = await i.editReply({ embeds: [embed(st)], components: [controls(st)] });
-      clearInterval(st.timer);
-      st.timer = setInterval(() => refresh(st), 8000);
+      await showPanel(st, i, { ephemeralOk: hasPanel });
+      if (hasPanel) await i.editReply({ content: '\u25b6 **' + String(st.track.title).slice(0, 80) + '**' }).catch(() => {});
     } catch (e) {
       console.error('play', e.message);
-      destroy(i.guildId);
+      if (!hasPanel) destroy(i.guildId);
       await i.editReply('Play error: ' + String(e.message).slice(0, 280)).catch(() => {});
     }
   }
@@ -477,7 +519,7 @@ export function attach(client) {
         if (i.commandName === 'stop') {
           if (!guilds.has(i.guildId)) return i.reply({ content: 'Kuch play nahi.', flags: MessageFlags.Ephemeral });
           destroy(i.guildId);
-          return i.reply('Stopped.');
+          return i.reply({ content: 'Stopped.', flags: MessageFlags.Ephemeral });
         }
       }
 
@@ -487,14 +529,13 @@ export function attach(client) {
         if (!vc) return i.reply({ content: 'Pehle voice channel me join karo.', flags: MessageFlags.Ephemeral });
         const err = canJoin(vc, i.guild.members.me);
         if (err) return i.reply({ content: err, flags: MessageFlags.Ephemeral });
-        await i.deferReply();
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
         try {
           const st = await playIn(i, q, vc);
-          st.msg = await i.editReply({ embeds: [embed(st)], components: [controls(st)] });
-          clearInterval(st.timer);
-          st.timer = setInterval(() => refresh(st), 8000);
+          await showPanel(st, i, { ephemeralOk: true });
+          await i.editReply({ content: '\u25b6 **' + String(st.track.title).slice(0, 80) + '**' }).catch(() => {});
         } catch (e) {
-          destroy(i.guildId);
+          console.error('search play', e.message);
           await i.editReply('Play error: ' + String(e.message).slice(0, 280)).catch(() => {});
         }
         return;
@@ -503,7 +544,7 @@ export function attach(client) {
       if (i.isButton() && i.customId.startsWith('mp:')) {
         const act = i.customId.slice(3);
         if (act === 'search') {
-          const modal = new ModalBuilder().setCustomId('mp:searchmodal').setTitle('Search song');
+          const modal = new ModalBuilder().setCustomId('mp:searchmodal').setTitle('Search & Play');
           modal.addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
@@ -511,7 +552,7 @@ export function attach(client) {
                 .setLabel('Song name or YouTube link')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setPlaceholder('babydoll, shape of you, or youtube url')
+                .setPlaceholder('babydoll, shape of you, youtube url…')
             )
           );
           return i.showModal(modal);
@@ -521,6 +562,7 @@ export function attach(client) {
         if (!i.member.voice.channelId || i.member.voice.channelId !== st.channelId) {
           return i.reply({ content: 'Bot ke VC me aao.', flags: MessageFlags.Ephemeral });
         }
+        if (!st.msg) st.msg = i.message;
         await i.deferUpdate();
         try {
           if (act === 'stop') return destroy(i.guildId);
@@ -531,7 +573,7 @@ export function attach(client) {
               st.paused = false;
             } else {
               st.player.pause();
-              st.offset += Date.now() - st.playStart;
+              st.offset += Date.now() - (st.playStart || Date.now());
               st.playStart = null;
               st.paused = true;
             }
@@ -540,7 +582,7 @@ export function attach(client) {
             const next = Math.max(0, Math.min(max, pos(st) + (act === 'fwd' ? 10 : -10)));
             await startTrack(st, next);
           }
-          refresh(st);
+          await refresh(st);
         } catch (e) {
           console.error('button', e.message);
         }
