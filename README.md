@@ -27,6 +27,7 @@ New service from this repo, **Root Directory = `bot-runner`** (the Dockerfile is
 | `AXIOM_API_URL` | no | defaults to the Axiom chat completions URL |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | no | store settings in Supabase |
 | `YT_COOKIE` | no | only if YouTube blocks the server IP |
+| `YT_API_KEY` | no | optional YouTube Data API v3 key for better `/play` search |
 
 Without Supabase, settings are saved in `./data/settings.json`. To keep them across redeploys add a Railway Volume mounted at `/app/data`.
 
