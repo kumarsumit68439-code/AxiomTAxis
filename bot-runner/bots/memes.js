@@ -439,21 +439,23 @@ export function attach(client) {
     if (!guild) return;
     const ch = guild.channels.cache.get(c.channelId) || await guild.channels.fetch(c.channelId).catch(() => null);
     if (!ch || !ch.isTextBased()) {
-      console.warn('memes: channel missing', c.channelId);
+      console.warn('memes: channel missing', guildId, c.channelId);
       return;
     }
     if (!usedMap.has(guildId)) usedMap.set(guildId, new Set());
+    console.log('memes: fetching', guildId, c.source, c.country, c.type, 'every', everySec + 's');
     const m = await getMeme(c, usedMap.get(guildId));
     if (m) {
       try {
         await sendMeme(ch, m);
         last.set(guildId, now);
+        console.log('memes: sent', m.kind, String(m.title || '').slice(0, 60));
       } catch (e) {
         console.error('meme send', e.message);
       }
     } else {
       console.warn('memes: no result', c.source, c.country, c.type);
-      last.set(guildId, now - Math.floor(every * 0.6));
+      last.set(guildId, now - Math.floor(every * 0.75));
     }
   }
 
