@@ -8,14 +8,14 @@ export function startStats(get) {
   http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, PATCH, DELETE, OPTIONS');
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
     if (req.method === 'OPTIONS') { res.statusCode = 204; return res.end(); }
     const { client, mode } = get();
-    if (req.url && req.url.startsWith('/api/me')) return handleMe(req, res, client);
-    if (req.url && req.url.startsWith('/api/')) return handleApi(req, res, client);
-    if (req.url && req.url.startsWith('/stats')) {
+    const path = (req.url || '').split('?')[0];
+    // Public stats — both /stats and /api/stats (dashboard may call either)
+    if (path === '/stats' || path === '/api/stats') {
       const ready = !!(client && client.isReady());
       const body = { online: ready, mode, uptime: Math.floor(process.uptime()) };
       if (ready) {
@@ -27,6 +27,8 @@ export function startStats(get) {
       }
       return res.end(JSON.stringify(body));
     }
+    if (req.url && req.url.startsWith('/api/me')) return handleMe(req, res, client);
+    if (req.url && req.url.startsWith('/api/')) return handleApi(req, res, client);
     res.end(JSON.stringify({ ok: true }));
   }).listen(port, () => console.log('Stats + dashboard API on port', port));
 }
