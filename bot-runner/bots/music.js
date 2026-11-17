@@ -1,6 +1,14 @@
 import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } from '@discordjs/voice';
 import play from 'play-dl';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const execFileAsync = promisify(execFile);
+const YTDLP_BIN = path.join('/tmp', 'yt-dlp-axiom');
+let ytdlpReady = null;
 
 const YT_COOKIE_KEEP = new Set([
   'CONSENT', 'SOCS', 'VISITOR_INFO1_LIVE', 'LOGIN_INFO', 'PREF', 'YSC',
@@ -214,33 +222,85 @@ export function attach(client) {
     if (st.track) refresh(st, true);
   }
 
-  async function streamFromPiped(id) {
-    const bases = [
-      'https://pipedapi.adminforge.de/streams/',
-      'https://api.piped.private.coffee/streams/',
-      'https://pipedapi.kavin.rocks/streams/'
-    ];
-    for (const base of bases) {
+  async function ensureYtDlp() {
+    if (ytdlpReady) return ytdlpReady;
+    ytdlpReady = (async () => {
       try {
-        const r = await fetch(base + encodeURIComponent(id), {
-          headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' },
-          signal: AbortSignal.timeout(12000)
-        });
-        if (!r.ok) continue;
-        const j = await r.json();
-        const audio = (j.audioStreams || [])
-          .filter((s) => s && s.url && (!s.mimeType || /audio|mp4|webm|opus|m4a/i.test(s.mimeType)))
-          .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-        if (audio[0] && audio[0].url) {
-          return { stream: audio[0].url, type: StreamType.Arbitrary, seekable: false };
+        if (fs.existsSync(YTDLP_BIN)) {
+          const st = fs.statSync(YTDLP_BIN);
+          if (st.size > 1000000) return YTDLP_BIN;
         }
-        const prog = (j.videoStreams || []).find((s) => s && s.url && s.videoOnly === false);
-        if (prog && prog.url) {
-          return { stream: prog.url, type: StreamType.Arbitrary, seekable: false };
+      } catch {}
+      const urls = [
+        'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
+        'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp'
+      ];
+      for (const u of urls) {
+        try {
+          console.log('music: downloading yt-dlp…');
+          const r = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(60000) });
+          if (!r.ok) continue;
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (buf.length < 1000000) continue;
+          fs.writeFileSync(YTDLP_BIN, buf, { mode: 0o755 });
+          console.log('music: yt-dlp ready, bytes=', buf.length);
+          return YTDLP_BIN;
+        } catch (e) {
+          console.warn('yt-dlp download', e.message);
         }
-      } catch (e) {
-        console.warn('piped stream', e.message);
       }
+      throw new Error('yt-dlp download failed');
+    })();
+    try {
+      return await ytdlpReady;
+    } catch (e) {
+      ytdlpReady = null;
+      throw e;
+    }
+  }
+
+  async function streamFromYtDlp(id) {
+    const bin = await ensureYtDlp();
+    const full = watchUrl(id);
+    const args = [
+      '-f', 'bestaudio[ext=m4a]/bestaudio/best',
+      '-g',
+      '--no-playlist',
+      '--no-warnings',
+      '--no-check-certificates',
+      '--geo-bypass'
+    ];
+    if (ytCookie) {
+      const cookieFile = path.join('/tmp', 'yt-cookie.txt');
+      try {
+        fs.writeFileSync(cookieFile, '# Netscape HTTP Cookie File\n');
+        for (const part of ytCookie.split(';')) {
+          const i = part.indexOf('=');
+          if (i < 1) continue;
+          const name = part.slice(0, i).trim();
+          const val = part.slice(i + 1).trim();
+          if (name && val) {
+            fs.appendFileSync(cookieFile, `.youtube.com\tTRUE\t/\tTRUE\t0\t${name}\t${val}\n`);
+          }
+        }
+        args.push('--cookies', cookieFile);
+      } catch {}
+    }
+    args.push(full);
+    try {
+      const { stdout } = await execFileAsync(bin, args, {
+        timeout: 45000,
+        maxBuffer: 2 * 1024 * 1024,
+        env: { ...process.env, PYTHONUTF8: '1' }
+      });
+      const line = String(stdout || '').trim().split('\n').filter((l) => l.startsWith('http'))[0];
+      if (line) {
+        return { stream: line, type: StreamType.Arbitrary, seekable: false };
+      }
+    } catch (e) {
+      const msg = String((e && e.stderr) || (e && e.message) || e).slice(0, 200);
+      console.warn('yt-dlp', msg);
+      throw new Error('yt-dlp stream fail: ' + msg);
     }
     return null;
   }
@@ -251,18 +311,23 @@ export function attach(client) {
       throw new Error('Invalid URL: no YouTube video id found in ' + String(url).slice(0, 80));
     }
     const full = watchUrl(id);
+
+    // 1) yt-dlp first (most reliable in 2026)
+    try {
+      const s = await streamFromYtDlp(id);
+      if (s && s.stream) return s;
+    } catch (e) {
+      console.warn('yt-dlp primary', String(e.message).slice(0, 120));
+    }
+
+    // 2) play-dl fallbacks
     const attempts = [
       async () => play.stream(full, { discordPlayerCompatibility: true }),
       async () => {
         const info = await play.video_info(full);
         return await play.stream_from_info(info, { discordPlayerCompatibility: true });
       },
-      async () => play.stream(full),
-      async () => {
-        applyCookie('');
-        try { return await play.stream(full, { discordPlayerCompatibility: true }); }
-        finally { if (ytCookie) applyCookie(ytCookie); }
-      }
+      async () => play.stream(full)
     ];
     let lastErr = null;
     for (const fn of attempts) {
@@ -274,9 +339,7 @@ export function attach(client) {
         console.warn('play-dl stream', String(e && e.message || e).slice(0, 120));
       }
     }
-    const piped = await streamFromPiped(id);
-    if (piped) return piped;
-    throw new Error(String(lastErr && lastErr.message || lastErr || 'stream failed — try another song or check YT_COOKIE').slice(0, 160));
+    throw new Error(String(lastErr && lastErr.message || lastErr || 'stream failed').slice(0, 160));
   }
 
   async function startTrack(st, sec) {
