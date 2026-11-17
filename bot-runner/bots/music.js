@@ -225,31 +225,38 @@ export function attach(client) {
   async function ensureYtDlp() {
     if (ytdlpReady) return ytdlpReady;
     ytdlpReady = (async () => {
+      // Standalone binary (no python3). Delete old python zipapp if present.
       try {
         if (fs.existsSync(YTDLP_BIN)) {
-          const st = fs.statSync(YTDLP_BIN);
-          if (st.size > 1000000) return YTDLP_BIN;
+          const head = fs.readFileSync(YTDLP_BIN).subarray(0, 40).toString('utf8');
+          if (head.startsWith('#!') || head.includes('python')) {
+            fs.unlinkSync(YTDLP_BIN);
+          } else {
+            const st = fs.statSync(YTDLP_BIN);
+            if (st.size > 5_000_000) return YTDLP_BIN;
+          }
         }
       } catch {}
+      // Official standalone Linux x86_64 binary — does NOT need python3
       const urls = [
-        'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
-        'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp'
+        'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux',
+        'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_linux'
       ];
       for (const u of urls) {
         try {
-          console.log('music: downloading yt-dlp…');
-          const r = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(60000) });
+          console.log('music: downloading yt-dlp_linux…');
+          const r = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(90000) });
           if (!r.ok) continue;
           const buf = Buffer.from(await r.arrayBuffer());
-          if (buf.length < 1000000) continue;
+          if (buf.length < 5_000_000) continue;
           fs.writeFileSync(YTDLP_BIN, buf, { mode: 0o755 });
-          console.log('music: yt-dlp ready, bytes=', buf.length);
+          console.log('music: yt-dlp_linux ready, bytes=', buf.length);
           return YTDLP_BIN;
         } catch (e) {
           console.warn('yt-dlp download', e.message);
         }
       }
-      throw new Error('yt-dlp download failed');
+      throw new Error('yt-dlp_linux download failed');
     })();
     try {
       return await ytdlpReady;
@@ -278,22 +285,27 @@ export function attach(client) {
       } catch {}
     }
 
-    // Fast URL-only: android/ios clients give direct googlevideo links (no JS runtime)
+    // android + tv_embedded return direct googlevideo URLs without python/JS
     const runs = [
       [
-        '-f', 'bestaudio[ext=m4a]/bestaudio[acodec=opus]/bestaudio/best',
+        '-f', 'bestaudio/best',
         '-g', '-q', '--no-warnings', '--no-playlist',
         '--no-check-certificates', '--geo-bypass',
-        '--socket-timeout', '12', '--retries', '2',
-        '--extractor-retries', '2', '--skip-unavailable-fragments',
-        '--no-cache-dir',
-        '--extractor-args', 'youtube:player_client=android,ios;player_skip=webpage,configs'
+        '--socket-timeout', '15', '--retries', '2',
+        '--extractor-retries', '2', '--no-cache-dir',
+        '--extractor-args', 'youtube:player_client=android'
       ],
       [
         '-f', 'bestaudio/best',
         '-g', '-q', '--no-warnings', '--no-playlist',
-        '--socket-timeout', '12', '--retries', '1',
-        '--extractor-args', 'youtube:player_client=web'
+        '--socket-timeout', '15', '--retries', '1',
+        '--extractor-args', 'youtube:player_client=tv_embedded'
+      ],
+      [
+        '-f', 'best',
+        '-g', '-q', '--no-warnings', '--no-playlist',
+        '--socket-timeout', '15', '--retries', '1',
+        '--extractor-args', 'youtube:player_client=android'
       ]
     ];
 
@@ -304,15 +316,14 @@ export function attach(client) {
       args.push(full);
       try {
         const { stdout } = await execFileAsync(bin, args, {
-          timeout: 25000,
-          maxBuffer: 1024 * 1024,
-          env: { ...process.env, PYTHONUTF8: '1' }
+          timeout: 30000,
+          maxBuffer: 1024 * 1024
         });
         const line = String(stdout || '').trim().split('\n').filter((l) => l.startsWith('http'))[0];
         if (line) return { stream: line, type: StreamType.Arbitrary, seekable: false };
       } catch (e) {
         lastErr = e;
-        console.warn('yt-dlp', String((e && e.stderr) || (e && e.message) || e).slice(0, 120));
+        console.warn('yt-dlp', String((e && e.stderr) || (e && e.message) || e).slice(0, 140));
       }
     }
     throw new Error('yt-dlp stream fail: ' + String((lastErr && lastErr.message) || lastErr || 'no url').slice(0, 160));
@@ -325,7 +336,6 @@ export function attach(client) {
     }
     const full = watchUrl(id);
 
-    // 1) yt-dlp first (most reliable in 2026)
     try {
       const s = await streamFromYtDlp(id);
       if (s && s.stream) return s;
@@ -333,7 +343,6 @@ export function attach(client) {
       console.warn('yt-dlp primary', String(e.message).slice(0, 120));
     }
 
-    // 2) play-dl fallbacks
     const attempts = [
       async () => play.stream(full, { discordPlayerCompatibility: true }),
       async () => {
