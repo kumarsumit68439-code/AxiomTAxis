@@ -2,13 +2,71 @@ import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Bu
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } from '@discordjs/voice';
 import play from 'play-dl';
 
-if (process.env.YT_COOKIE) {
+// Node default max header size is small; huge Google cookie jars cause "Parse Error: Header overflow".
+const YT_COOKIE_KEEP = new Set([
+  'CONSENT', 'SOCS', 'VISITOR_INFO1_LIVE', 'VISITOR_PRIVACY_METADATA',
+  'LOGIN_INFO', 'PREF', 'YSC',
+  'SID', 'HSID', 'SSID', 'APISID', 'SAPISID',
+  '__Secure-1PSID', '__Secure-3PSID',
+  '__Secure-1PAPISID', '__Secure-3PAPISID',
+  '__Secure-1PSIDTS', '__Secure-3PSIDTS',
+  '__Secure-1PSIDCC', '__Secure-3PSIDCC',
+  'SIDCC', '__Secure-SIDCC'
+]);
+
+function slimYtCookie(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let s = raw.trim();
+  // Netscape cookies.txt export → header style
+  if (s.includes('\t') || /^#/.test(s) || s.includes('\n')) {
+    const map = new Map();
+    for (const line of s.split(/\r?\n/)) {
+      if (!line || line.startsWith('#')) continue;
+      const p = line.split('\t');
+      if (p.length >= 7) map.set(p[5], p[6]);
+      else {
+        const m = line.match(/^([^=\s]+)=(.*)$/);
+        if (m) map.set(m[1].trim(), m[2].trim());
+      }
+    }
+    s = [...map.entries()].map(([k, v]) => k + '=' + v).join('; ');
+  }
+  const kept = [];
+  for (const part of s.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 1) continue;
+    const name = part.slice(0, i).trim();
+    const val = part.slice(i + 1).trim();
+    if (!name || !val) continue;
+    if (YT_COOKIE_KEEP.has(name) || name.startsWith('__Secure-') || name.startsWith('__Host-')) {
+      kept.push(name + '=' + val);
+    }
+  }
+  let out = kept.join('; ');
+  // Hard cap ~6KB so Node never hits header overflow
+  if (out.length > 6000) {
+    const prefer = ['LOGIN_INFO', 'SID', 'HSID', 'SSID', 'APISID', 'SAPISID',
+      '__Secure-1PSID', '__Secure-3PSID', '__Secure-1PAPISID', '__Secure-3PAPISID',
+      'CONSENT', 'SOCS', 'VISITOR_INFO1_LIVE', 'PREF'];
+    const map = new Map(kept.map((kv) => {
+      const j = kv.indexOf('=');
+      return [kv.slice(0, j), kv];
+    }));
+    out = prefer.map((n) => map.get(n)).filter(Boolean).join('; ');
+  }
+  return out;
+}
+
+const ytCookie = slimYtCookie(process.env.YT_COOKIE || '');
+if (ytCookie) {
   try {
-    play.setToken({ youtube: { cookie: process.env.YT_COOKIE } });
-    console.log('play-dl: YT_COOKIE loaded');
+    play.setToken({ youtube: { cookie: ytCookie } });
+    console.log('play-dl: YT_COOKIE loaded, length=' + ytCookie.length);
   } catch (e) {
     console.error('play-dl cookie failed', e.message);
   }
+} else if (process.env.YT_COOKIE) {
+  console.warn('play-dl: YT_COOKIE set but no usable names after slim — check cookie format');
 }
 
 export const commands = [
@@ -84,8 +142,11 @@ async function resolveVideo(query) {
         thumb: v && v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url
       };
     } catch (e) {
+      if (/Header overflow/i.test(String(e.message))) {
+        throw new Error('Cookie bahut badi hai (Header overflow). Sirf SID/LOGIN_INFO wale cookies rakho. Code auto-trim karta hai — redeploy + chhoti cookie try karo.');
+      }
       if (/Sign in|confirm your age|bot|403/i.test(String(e.message))) {
-        throw new Error('YouTube blocked video_info. Set a fresh YT_COOKIE on Railway. (' + String(e.message).slice(0, 100) + ')');
+        throw new Error('YouTube blocked video_info. Fresh YT_COOKIE (logged-in) lagao. (' + String(e.message).slice(0, 80) + ')');
       }
       return { title: 'YouTube video', url: watchUrl(id), dur: 0, thumb: null };
     }
@@ -95,10 +156,13 @@ async function resolveVideo(query) {
   try {
     found = await play.search(q, { limit: 8, source: { youtube: 'video' } });
   } catch (e) {
+    if (/Header overflow/i.test(String(e.message))) {
+      throw new Error('Header overflow — YT_COOKIE trim karo (sirf essential names). Redeploy ke baad dubara try.');
+    }
     throw new Error(
       'YouTube search fail: ' +
         String(e.message).slice(0, 160) +
-        (process.env.YT_COOKIE ? '' : ' — add YT_COOKIE on Railway.')
+        (ytCookie ? '' : ' — add YT_COOKIE on Railway.')
     );
   }
   if (!found || !found.length) throw new Error('Song nahi mila: ' + q);
@@ -177,10 +241,14 @@ export function attach(client) {
       try {
         stream = await play.stream(url);
       } catch (e2) {
+        const msg = String(e2.message || e.message);
+        if (/Header overflow/i.test(msg)) {
+          throw new Error('Header overflow — YT_COOKIE chhoti rakho (LOGIN_INFO + SID family only).');
+        }
         throw new Error(
           'Stream fail: ' +
-            String(e2.message || e.message).slice(0, 160) +
-            (process.env.YT_COOKIE ? ' — cookie expire ho sakti hai, naya YT_COOKIE lagao.' : ' — Railway pe YT_COOKIE set karo.')
+            msg.slice(0, 160) +
+            (ytCookie ? ' — cookie expire ho sakti hai.' : ' — Railway pe YT_COOKIE set karo.')
         );
       }
     }
