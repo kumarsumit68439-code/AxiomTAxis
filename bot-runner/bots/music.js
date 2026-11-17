@@ -262,16 +262,8 @@ export function attach(client) {
   async function streamFromYtDlp(id) {
     const bin = await ensureYtDlp();
     const full = watchUrl(id);
-    const args = [
-      '-f', 'bestaudio[ext=m4a]/bestaudio/best',
-      '-g',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-check-certificates',
-      '--geo-bypass'
-    ];
+    const cookieFile = path.join('/tmp', 'yt-cookie.txt');
     if (ytCookie) {
-      const cookieFile = path.join('/tmp', 'yt-cookie.txt');
       try {
         fs.writeFileSync(cookieFile, '# Netscape HTTP Cookie File\n');
         for (const part of ytCookie.split(';')) {
@@ -283,26 +275,47 @@ export function attach(client) {
             fs.appendFileSync(cookieFile, `.youtube.com\tTRUE\t/\tTRUE\t0\t${name}\t${val}\n`);
           }
         }
-        args.push('--cookies', cookieFile);
       } catch {}
     }
-    args.push(full);
-    try {
-      const { stdout } = await execFileAsync(bin, args, {
-        timeout: 45000,
-        maxBuffer: 2 * 1024 * 1024,
-        env: { ...process.env, PYTHONUTF8: '1' }
-      });
-      const line = String(stdout || '').trim().split('\n').filter((l) => l.startsWith('http'))[0];
-      if (line) {
-        return { stream: line, type: StreamType.Arbitrary, seekable: false };
+
+    // Fast URL-only: android/ios clients give direct googlevideo links (no JS runtime)
+    const runs = [
+      [
+        '-f', 'bestaudio[ext=m4a]/bestaudio[acodec=opus]/bestaudio/best',
+        '-g', '-q', '--no-warnings', '--no-playlist',
+        '--no-check-certificates', '--geo-bypass',
+        '--socket-timeout', '12', '--retries', '2',
+        '--extractor-retries', '2', '--skip-unavailable-fragments',
+        '--no-cache-dir',
+        '--extractor-args', 'youtube:player_client=android,ios;player_skip=webpage,configs'
+      ],
+      [
+        '-f', 'bestaudio/best',
+        '-g', '-q', '--no-warnings', '--no-playlist',
+        '--socket-timeout', '12', '--retries', '1',
+        '--extractor-args', 'youtube:player_client=web'
+      ]
+    ];
+
+    let lastErr = null;
+    for (const base of runs) {
+      const args = [...base];
+      if (ytCookie && fs.existsSync(cookieFile)) args.push('--cookies', cookieFile);
+      args.push(full);
+      try {
+        const { stdout } = await execFileAsync(bin, args, {
+          timeout: 25000,
+          maxBuffer: 1024 * 1024,
+          env: { ...process.env, PYTHONUTF8: '1' }
+        });
+        const line = String(stdout || '').trim().split('\n').filter((l) => l.startsWith('http'))[0];
+        if (line) return { stream: line, type: StreamType.Arbitrary, seekable: false };
+      } catch (e) {
+        lastErr = e;
+        console.warn('yt-dlp', String((e && e.stderr) || (e && e.message) || e).slice(0, 120));
       }
-    } catch (e) {
-      const msg = String((e && e.stderr) || (e && e.message) || e).slice(0, 200);
-      console.warn('yt-dlp', msg);
-      throw new Error('yt-dlp stream fail: ' + msg);
     }
-    return null;
+    throw new Error('yt-dlp stream fail: ' + String((lastErr && lastErr.message) || lastErr || 'no url').slice(0, 160));
   }
 
   async function openStream(url) {
