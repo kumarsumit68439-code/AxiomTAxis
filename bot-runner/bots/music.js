@@ -1,4 +1,4 @@
-import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } from '@discordjs/voice';
 import play from 'play-dl';
 import { execFile } from 'node:child_process';
@@ -183,6 +183,31 @@ export function attach(client) {
   const guilds = new Map();
   const pos = (st) => (st.offset + (st.playStart ? Date.now() - st.playStart : 0)) / 1000;
 
+  const MOODS = {
+    any: { label: 'Any / Normal', emoji: '🎵', suffix: '' },
+    lofi: { label: 'Lofi', emoji: '🌙', suffix: 'lofi chill beats' },
+    romantic: { label: 'Romantic', emoji: '💖', suffix: 'romantic love song' },
+    happy: { label: 'Happy', emoji: '😄', suffix: 'happy upbeat song' },
+    sad: { label: 'Sad', emoji: '😢', suffix: 'sad emotional song' },
+    party: { label: 'Party', emoji: '🎉', suffix: 'party dance song' },
+    hindi: { label: 'Hindi / Bollywood', emoji: '🇮🇳', suffix: 'hindi bollywood song' }
+  };
+
+  function moodOf(st) {
+    return MOODS[st.mood] ? st.mood : 'any';
+  }
+
+  function applyMood(query, moodKey) {
+    const q = String(query || '').trim();
+    if (!q) return q;
+    if (extractId(q)) return q;
+    const m = MOODS[moodKey] || MOODS.any;
+    if (!m.suffix) return q;
+    const low = q.toLowerCase();
+    if (m.suffix.split(' ').some((w) => w.length > 3 && low.includes(w))) return q;
+    return q + ' ' + m.suffix;
+  }
+
   function embed(st, ended) {
     const t = st.track;
     const p = Math.min(pos(st), t.dur || 0);
@@ -190,6 +215,7 @@ export function attach(client) {
     const at = t.dur ? Math.min(len - 1, Math.floor((p / t.dur) * len)) : 0;
     const bar = '\u2501'.repeat(at) + '\ud83d\udd35' + '\u2501'.repeat(Math.max(0, len - 1 - at));
     const status = ended ? 'Stopped' : (st.paused ? 'Paused' : 'Playing');
+    const mood = MOODS[moodOf(st)] || MOODS.any;
     const e = new EmbedBuilder()
       .setColor(ended ? 0x6b7280 : (st.paused ? 0xfbbf24 : 0xf97316))
       .setAuthor({ name: 'Mini Player \u00b7 ' + status })
@@ -197,27 +223,43 @@ export function attach(client) {
       .setURL(t.url)
       .setDescription(
         bar + '\n`' + fmt(p) + '` / `' + (t.dur ? fmt(t.dur) : '--:--') + '`\n' +
-        '\ud83d\udd0d **Search** se naya gaana \u00b7 \u23ea \u23e9 seek \u00b7 \u23f8/\u25b6 pause'
+        mood.emoji + ' Mood: **' + mood.label + '** \u00b7 \ud83d\udd0d Search / seek / pause'
       )
-      .setFooter({ text: 'by ' + (t.by || 'user') + ' \u00b7 ek hi panel \u2014 naya message nahi' });
+      .setFooter({ text: 'by ' + (t.by || 'user') + ' \u00b7 ek hi panel' });
     if (t.thumb) e.setThumbnail(t.thumb);
     return e;
   }
 
-  function controls(st) {
-    return new ActionRowBuilder().addComponents(
+  function panelComponents(st) {
+    const mood = moodOf(st);
+    const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('mp:back').setEmoji('⏪').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('mp:pause').setEmoji(st.paused ? '▶️' : '⏸️').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('mp:fwd').setEmoji('⏩').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('mp:search').setEmoji('🔍').setLabel('Search').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('mp:stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger)
     );
+    const select = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('mp:mood')
+        .setPlaceholder((MOODS[mood] || MOODS.any).emoji + ' Mood: ' + (MOODS[mood] || MOODS.any).label)
+        .addOptions(
+          Object.entries(MOODS).map(([value, m]) =>
+            new StringSelectMenuOptionBuilder()
+              .setLabel(m.label)
+              .setValue(value)
+              .setEmoji(m.emoji)
+              .setDefault(value === mood)
+          )
+        )
+    );
+    return [buttons, select];
   }
 
   async function refresh(st, ended) {
     if (!st.msg) return;
     try {
-      await st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : [controls(st)] });
+      await st.msg.edit({ embeds: [embed(st, ended)], components: ended ? [] : panelComponents(st) });
     } catch {
       st.msg = null;
     }
@@ -231,9 +273,8 @@ export function attach(client) {
     }, 5000);
   }
 
-  /** Update existing mini-player message, or create exactly one new panel. */
   async function showPanel(st, interaction, { ephemeralOk }) {
-    const payload = { embeds: [embed(st)], components: [controls(st)] };
+    const payload = { embeds: [embed(st)], components: panelComponents(st) };
     if (st.msg) {
       try {
         await st.msg.edit(payload);
@@ -427,7 +468,7 @@ export function attach(client) {
     connection.subscribe(player);
     const st = {
       connection, player, channelId: vc.id,
-      offset: 0, playStart: null, paused: false, track: null, msg: null, timer: null, queue: []
+      offset: 0, playStart: null, paused: false, track: null, msg: null, timer: null, queue: [], mood: 'any'
     };
     player.on(AudioPlayerStatus.Idle, () => {
       if (guilds.get(guild.id) !== st) return;
@@ -473,13 +514,16 @@ export function attach(client) {
   }
 
   async function playIn(i, query, vc) {
-    const v = await resolveVideo(query);
     let st = guilds.get(i.guildId);
     if (!st) st = create(i.guild, vc);
     else if (st.channelId !== vc.id) {
+      const prevMood = st.mood;
       destroy(i.guildId);
       st = create(i.guild, vc);
+      if (prevMood) st.mood = prevMood;
     }
+    const q = applyMood(query, moodOf(st));
+    const v = await resolveVideo(q);
     st.track = { title: v.title, url: v.url, id: v.id, dur: v.dur, thumb: v.thumb, by: i.user.username };
     await startTrack(st, 0);
     return st;
@@ -541,10 +585,27 @@ export function attach(client) {
         return;
       }
 
+      if (i.isStringSelectMenu() && i.customId === 'mp:mood') {
+        const st = guilds.get(i.guildId);
+        if (!st) return i.reply({ content: 'Pehle /play se music start karo.', flags: MessageFlags.Ephemeral });
+        if (!i.member.voice.channelId || i.member.voice.channelId !== st.channelId) {
+          return i.reply({ content: 'Bot ke VC me aao.', flags: MessageFlags.Ephemeral });
+        }
+        const val = i.values[0];
+        if (!MOODS[val]) return i.reply({ content: 'Invalid mood.', flags: MessageFlags.Ephemeral });
+        st.mood = val;
+        if (!st.msg) st.msg = i.message;
+        await i.deferUpdate();
+        await refresh(st);
+        return;
+      }
+
       if (i.isButton() && i.customId.startsWith('mp:')) {
         const act = i.customId.slice(3);
         if (act === 'search') {
-          const modal = new ModalBuilder().setCustomId('mp:searchmodal').setTitle('Search & Play');
+          const st0 = guilds.get(i.guildId);
+          const moodHint = st0 ? (MOODS[moodOf(st0)] || MOODS.any).label : 'Any';
+          const modal = new ModalBuilder().setCustomId('mp:searchmodal').setTitle('Search & Play · ' + moodHint);
           modal.addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
@@ -552,7 +613,7 @@ export function attach(client) {
                 .setLabel('Song name or YouTube link')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setPlaceholder('babydoll, shape of you, youtube url…')
+                .setPlaceholder('name / link — mood auto apply (ya Any)')
             )
           );
           return i.showModal(modal);
