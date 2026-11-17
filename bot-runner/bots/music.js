@@ -2,7 +2,14 @@ import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Bu
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState } from '@discordjs/voice';
 import play from 'play-dl';
 
-if (process.env.YT_COOKIE) play.setToken({ youtube: { cookie: process.env.YT_COOKIE } });
+if (process.env.YT_COOKIE) {
+  try {
+    play.setToken({ youtube: { cookie: process.env.YT_COOKIE } });
+    console.log('play-dl: YT_COOKIE loaded');
+  } catch (e) {
+    console.error('play-dl cookie failed', e.message);
+  }
+}
 
 export const commands = [
   {
@@ -10,7 +17,7 @@ export const commands = [
     description: 'Search YouTube and play a song in a voice channel',
     dm_permission: false,
     options: [
-      { name: 'query', description: 'Song name', type: 3, required: true },
+      { name: 'query', description: 'Song name or YouTube URL', type: 3, required: true },
       {
         name: 'channel',
         description: 'Voice channel to join (select or paste ID). If empty, joins your current VC',
@@ -41,6 +48,51 @@ const fmt = (s) => {
   s = Math.max(0, Math.floor(s));
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 };
+
+async function resolveVideo(query) {
+  const q = String(query || '').trim();
+  if (!q) throw new Error('Song name / URL empty.');
+
+  try {
+    const kind = play.yt_validate(q);
+    if (kind === 'video') {
+      const info = await play.video_info(q);
+      const v = info.video_details;
+      const url = v.url || q;
+      if (!url) throw new Error('Video URL missing from YouTube.');
+      return {
+        title: v.title || 'Unknown',
+        url,
+        dur: Number(v.durationInSec) || 0,
+        thumb: v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url
+      };
+    }
+  } catch (e) {
+    if (/Sign in|confirm|bot|403|401/i.test(String(e.message))) {
+      throw new Error('YouTube block: Railway pe valid YT_COOKIE set karo (browser se logged-in cookie). ' + String(e.message).slice(0, 120));
+    }
+  }
+
+  let found = [];
+  try {
+    found = await play.search(q, { limit: 5, source: { youtube: 'video' } });
+  } catch (e) {
+    throw new Error('YouTube search fail: ' + String(e.message).slice(0, 180) + (process.env.YT_COOKIE ? '' : ' — YT_COOKIE set nahi hai.'));
+  }
+  if (!found || !found.length) throw new Error('Song nahi mila: ' + q);
+
+  for (const v of found) {
+    const url = v.url || (v.id ? 'https://www.youtube.com/watch?v=' + v.id : null);
+    if (!url) continue;
+    return {
+      title: v.title || 'Unknown',
+      url,
+      dur: Number(v.durationInSec) || 0,
+      thumb: v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url
+    };
+  }
+  throw new Error('Search result me valid YouTube URL nahi mili. Cookie refresh karo ya pure YouTube link se /play try karo.');
+}
 
 export function attach(client) {
   const guilds = new Map();
@@ -81,6 +133,7 @@ export function attach(client) {
   }
 
   async function startTrack(st, sec) {
+    if (!st.track || !st.track.url) throw new Error('Track URL missing (not found url).');
     const s = await play.stream(st.track.url, { seek: sec });
     st.player.play(createAudioResource(s.stream, { inputType: s.type }));
     st.offset = sec * 1000;
@@ -147,16 +200,14 @@ export function attach(client) {
 
     await i.deferReply();
     try {
-      const found = await play.search(i.options.getString('query', true), { limit: 1, source: { youtube: 'video' } });
-      if (!found.length) return i.editReply('Song nahi mila.');
-      const v = found[0];
+      const v = await resolveVideo(i.options.getString('query', true));
       if (guilds.has(i.guildId)) destroy(i.guildId);
       const st = create(i.guild, vc);
       st.track = {
-        title: v.title || 'Unknown',
+        title: v.title,
         url: v.url,
-        dur: v.durationInSec || 0,
-        thumb: v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url,
+        dur: v.dur,
+        thumb: v.thumb,
         by: i.user.username
       };
       await startTrack(st, 0);
@@ -165,7 +216,7 @@ export function attach(client) {
     } catch (e) {
       console.error('play', e.message);
       destroy(i.guildId);
-      await i.editReply('Play error: ' + String(e.message).slice(0, 200)).catch(() => {});
+      await i.editReply('Play error: ' + String(e.message).slice(0, 280)).catch(() => {});
     }
   }
 
