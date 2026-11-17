@@ -5,7 +5,7 @@ export const commands = [
   { name: 'meme', description: 'Random meme', dm_permission: false },
   {
     name: 'memes',
-    description: 'Auto memes by source every N seconds (no extra command)',
+    description: 'Auto memes by source every N seconds',
     default_member_permissions: MANAGE,
     dm_permission: false,
     options: [
@@ -44,33 +44,32 @@ export const commands = [
 ];
 
 const UA = {
-  'user-agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  accept: 'application/json'
 };
 
-const REDDIT_SUBS = [
-  'memes', 'dankmemes', 'IndianDankMemes', 'indianmemes', 'IndianMeyMeys',
-  'bakchodi', 'funny', 'me_irl', 'wholesomememes'
-];
-
+const REDDIT_SUBS = ['memes','dankmemes','IndianDankMemes','indianmemes','IndianMeyMeys','bakchodi','funny','me_irl'];
 const YT_QUERIES = [
-  'indian memes funny short',
+  'indian memes funny',
   'desi memes hindi',
   'viral indian meme',
-  'funny memes 2024 short',
-  'hindi comedy meme short',
-  'relatable indian memes'
+  'funny memes short',
+  'hindi comedy meme',
+  'dank indian memes'
 ];
 
 function isImage(url) {
   return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(String(url || ''));
 }
 
+function extractYtId(s) {
+  const m = String(s || '').match(/(?:v=|youtu\.be\/|shorts\/|\/watch\?v=)?([A-Za-z0-9_-]{11})/);
+  return m && /^[A-Za-z0-9_-]{11}$/.test(m[1]) ? m[1] : null;
+}
+
 async function fromReddit() {
   const sub = REDDIT_SUBS[Math.floor(Math.random() * REDDIT_SUBS.length)];
-  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=50', {
-    headers: { ...UA, accept: 'application/json' }
-  });
+  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=40', { headers: UA });
   if (!r.ok) return null;
   const j = await r.json();
   const posts = (j.data && j.data.children || []).map((c) => c.data).filter((p) => p && !p.over_18 && !p.spoiler);
@@ -92,28 +91,23 @@ async function fromReddit() {
 async function fromYouTube() {
   const q = YT_QUERIES[Math.floor(Math.random() * YT_QUERIES.length)];
   const bases = [
-    'https://pipedapi.kavin.rocks/search?q=',
-    'https://piped.video/api/v1/search?q=',
-    'https://invidious.fdn.fr/api/v1/search?q='
+    'https://api.piped.private.coffee/search?q=',
+    'https://pipedapi.adminforge.de/search?q='
   ];
   for (const base of bases) {
     try {
-      const r = await fetch(base + encodeURIComponent(q), { headers: UA, signal: AbortSignal.timeout(10000) });
+      const r = await fetch(base + encodeURIComponent(q) + '&filter=videos', {
+        headers: UA,
+        signal: AbortSignal.timeout(12000)
+      });
       if (!r.ok) continue;
-      const list = await r.json();
-      const arr = Array.isArray(list) ? list : (list.items || []);
+      const data = await r.json();
+      const items = Array.isArray(data) ? data : (data.items || []);
       const vids = [];
-      for (const v of arr) {
-        const t = String(v.type || v.videoType || 'video').toLowerCase();
-        if (t && !t.includes('video')) continue;
-        let id = v.videoId || v.id;
-        if (!id && v.url) {
-          const m = String(v.url).match(/(?:v=|youtu\.be\/|shorts\/)?([A-Za-z0-9_-]{11})/);
-          id = m && m[1];
-        }
+      for (const v of items) {
+        if (v.type && v.type !== 'stream' && v.type !== 'video') continue;
+        const id = extractYtId(v.url) || extractYtId(v.id) || extractYtId(v.videoId);
         if (!id) continue;
-        id = String(id).replace(/.*v=/, '').replace(/^\//, '').slice(0, 11);
-        if (!/^[A-Za-z0-9_-]{11}$/.test(id)) continue;
         vids.push({
           kind: 'youtube',
           title: v.title || v.name || q,
@@ -122,8 +116,13 @@ async function fromYouTube() {
           thumb: v.thumbnail || null
         });
       }
-      if (vids.length) return vids[Math.floor(Math.random() * Math.min(vids.length, 12))];
-    } catch {}
+      if (vids.length) {
+        console.log('memes yt ok', q, vids.length);
+        return vids[Math.floor(Math.random() * Math.min(vids.length, 15))];
+      }
+    } catch (e) {
+      console.warn('memes yt', base, e.message);
+    }
   }
   return null;
 }
@@ -155,7 +154,7 @@ async function fromGoogle() {
 
 async function getMeme(source) {
   const src = String(source || 'all').toLowerCase();
-  const attempts = src === 'youtube' ? 6 : src === 'all' ? 5 : 4;
+  const attempts = src === 'youtube' ? 8 : 5;
   for (let i = 0; i < attempts; i++) {
     try {
       let m = null;
@@ -164,10 +163,12 @@ async function getMeme(source) {
       else if (src === 'google') m = await fromGoogle();
       else {
         const fns = [fromReddit, fromYouTube, fromGoogle];
-        m = await fns[Math.floor(Math.random() * fns.length)]();
+        m = await fns[i % fns.length]();
       }
       if (m && m.url) return m;
-    } catch {}
+    } catch (e) {
+      console.warn('getMeme', src, e.message);
+    }
   }
   return null;
 }
@@ -220,8 +221,11 @@ export function attach(client) {
     const ch = guild.channels.cache.get(c.channelId);
     if (!ch || !ch.isTextBased()) return;
     const m = await getMeme(c.source || 'all');
-    if (m) await sendMeme(ch, m).catch((e) => console.error('meme send', e.message));
-    else console.warn('memes: no result for source=' + (c.source || 'all') + ' guild=' + guildId);
+    if (m) {
+      await sendMeme(ch, m).catch((e) => console.error('meme send', e.message));
+    } else {
+      console.warn('memes: no result source=' + (c.source || 'all'));
+    }
   }
 
   client.on(Events.InteractionCreate, async (i) => {
@@ -258,11 +262,11 @@ export function attach(client) {
         await i.reply({
           content:
             'Auto memes **ON** ' + ch + '\n' +
-            'Source locked: **' + source + '** (will not change)\n' +
-            'Every **' + s.memes.intervalSec + 's** — pehla post abhi…',
+            'Source locked: **' + source + '**\n' +
+            'Every **' + s.memes.intervalSec + 's** — posting now…',
           flags: MessageFlags.Ephemeral
         });
-        setTimeout(() => postOnce(i.guildId, true), 1200);
+        postOnce(i.guildId, true).catch((e) => console.error('meme first', e.message));
         return;
       }
       if (sub === 'off') {
