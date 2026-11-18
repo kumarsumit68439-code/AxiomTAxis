@@ -234,10 +234,13 @@ export function attach(client) {
     const mood = moodOf(st);
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('mp:back').setEmoji('⏪').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('mp:pause').setEmoji(st.paused ? '▶️' : '⏸️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('mp:pause').setEmoji(st.paused ? '▶️' : '⏸️').setLabel(st.paused ? 'Resume' : 'Pause').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('mp:play').setEmoji('🎵').setLabel('Play').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('mp:fwd').setEmoji('⏩').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('mp:search').setEmoji('🔍').setLabel('Search').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('mp:stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger)
+    );
+    const searchRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('mp:search').setEmoji('🔍').setLabel('Search').setStyle(ButtonStyle.Success)
     );
     const select = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
@@ -253,7 +256,7 @@ export function attach(client) {
           )
         )
     );
-    return [buttons, select];
+    return [buttons, searchRow, select];
   }
 
   async function refresh(st, ended) {
@@ -447,6 +450,12 @@ export function attach(client) {
   }
 
   async function startTrack(st, sec) {
+    // Sound fix: pehle voice connection Ready hone do (DAVE handshake), phir audio bhejo.
+    try {
+      await entersState(st.connection, VoiceConnectionStatus.Ready, 20000);
+    } catch {
+      throw new Error('Voice connect nahi hua (20s). Bot ko Connect + Speak permission do aur dobara try karo.');
+    }
     const stream = await openStream(st.track.url);
     const resource = typeof stream.stream === 'string'
       ? createAudioResource(stream.stream, { inputType: StreamType.Arbitrary })
@@ -470,6 +479,15 @@ export function attach(client) {
       connection, player, channelId: vc.id,
       offset: 0, playStart: null, paused: false, track: null, msg: null, timer: null, queue: [], mood: 'any'
     };
+    connection.on('stateChange', (o, n) => {
+      console.log('voice', guild.id, o.status, '->', n.status);
+    });
+    connection.on('error', (e) => {
+      console.error('voice error', e.message);
+    });
+    player.on('stateChange', (o, n) => {
+      console.log('player', guild.id, o.status, '->', n.status);
+    });
     player.on(AudioPlayerStatus.Idle, () => {
       if (guilds.get(guild.id) !== st) return;
       if (st.queue.length) {
@@ -637,6 +655,17 @@ export function attach(client) {
               st.offset += Date.now() - (st.playStart || Date.now());
               st.playStart = null;
               st.paused = true;
+            }
+          } else if (act === 'play') {
+            // Sirf play: paused ho to resume, band ho gaya ho to wahin se dobara chalao, chal raha ho to kuch nahi.
+            const status = st.player.state.status;
+            if (st.paused || status === AudioPlayerStatus.Paused || status === AudioPlayerStatus.AutoPaused) {
+              st.player.unpause();
+              if (st.paused) st.playStart = Date.now();
+              st.paused = false;
+            } else if (status === AudioPlayerStatus.Idle) {
+              const max = Math.max(0, (st.track.dur || 0) - 2);
+              await startTrack(st, Math.min(max, pos(st)));
             }
           } else if (act === 'back' || act === 'fwd') {
             const max = Math.max(0, (st.track.dur || 0) - 2);
