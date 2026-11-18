@@ -238,6 +238,21 @@ const YT_Q = {
   }
 };
 
+// Type lock: in types ke video title me ye keywords hone chahiye, warna video skip (type kabhi change nahi hoga).
+const TYPE_KW = {
+  freefire: ['free fire', 'freefire', 'tung tung', 'sahur', 'garena'],
+  gali: ['gali'],
+  cidgali: ['cid', 'gali'],
+  cid: ['cid', 'acp', 'pradyuman', 'daya']
+};
+
+function matchesType(type, title) {
+  const kw = TYPE_KW[type];
+  if (!kw) return true;
+  const t = String(title || '').toLowerCase();
+  return kw.some((k) => t.includes(k));
+}
+
 function isImage(url) {
   return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(String(url || ''));
 }
@@ -254,7 +269,7 @@ function pick(arr) {
 async function fromReddit(country, type) {
   const subs = (SUBS[country] || SUBS.global)[type] || SUBS.global.any;
   const sub = pick(subs);
-  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=50', { headers: UA });
+  const r = await fetch('https://www.reddit.com/r/' + sub + '/hot.json?limit=50', { headers: UA, signal: AbortSignal.timeout(10000) });
   if (!r.ok) return null;
   const j = await r.json();
   const posts = (j.data && j.data.children || []).map((c) => c.data).filter((p) => p && !p.over_18 && !p.spoiler);
@@ -315,7 +330,10 @@ async function ytSearchPiped(q) {
 
 async function ytSearchPlay(q) {
   try {
-    const found = await play.search(q, { limit: 20, source: { youtube: 'video' } });
+    const found = await Promise.race([
+      play.search(q, { limit: 20, source: { youtube: 'video' } }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('play-dl search timeout')), 12000))
+    ]);
     const vids = [];
     for (const v of found || []) {
       const id = extractYtId(v.url) || (typeof v.id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v.id) ? v.id : null);
@@ -334,10 +352,16 @@ async function fromYouTube(country, type) {
   const pool = ytPool.get(poolKey);
   if (pool && pool.length) return pool.shift();
   const qs = (YT_Q[country] || YT_Q.global)[type] || YT_Q.global.any;
-  const extra = pick(['shorts', '2024', '2025', 'hindi', 'funny', 'video', 'meme', 'compilation', 'new']);
-  const q = pick(qs) + ' ' + extra;
-  let vids = await ytSearchPiped(q);
-  if (!vids.length) vids = await ytSearchPlay(q);
+  const typed = !!TYPE_KW[type];
+  let vids = [];
+  for (let attempt = 0; attempt < 3 && !vids.length; attempt++) {
+    // Typed (locked) search me extra random words nahi lagate, taaki results type se bahar na jayein.
+    const extra = typed ? '' : pick(['shorts', '2024', '2025', 'hindi', 'funny', 'video', 'meme', 'compilation', 'new']);
+    const q = (pick(qs) + ' ' + extra).trim();
+    let found = await ytSearchPiped(q);
+    if (!found.length) found = await ytSearchPlay(q);
+    vids = found.filter((v) => matchesType(type, v.title));
+  }
   if (!vids.length) return null;
   for (let i = vids.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -358,7 +382,7 @@ async function fromGoogle(country, type) {
   };
   try {
     const sub = pick(subMap[country] || subMap.global);
-    const r = await fetch('https://meme-api.com/gimme/' + sub, { headers: UA });
+    const r = await fetch('https://meme-api.com/gimme/' + sub, { headers: UA, signal: AbortSignal.timeout(10000) });
     if (r.ok) {
       const m = await r.json();
       if (m && m.url && !m.nsfw && isImage(m.url)) {
@@ -367,7 +391,7 @@ async function fromGoogle(country, type) {
     }
   } catch {}
   try {
-    const r = await fetch('https://api.imgflip.com/get_memes', { headers: UA });
+    const r = await fetch('https://api.imgflip.com/get_memes', { headers: UA, signal: AbortSignal.timeout(10000) });
     if (r.ok) {
       const j = await r.json();
       const memes = (j.data && j.data.memes) || [];
@@ -487,7 +511,7 @@ export function attach(client) {
       .setAuthor({ name: 'Auto Memes \u00b7 Mini Panel \u00b7 ' + (on ? 'ON' : 'OFF') })
       .setTitle(on ? '\ud83d\udfe2 Memes automatically ja rahe hain' : '\ud83d\udd34 Memes band hain')
       .setDescription(
-        '\ud83d\udcfa Channel: ' + (c && c.channelId ? '<#' + c.channelId + '>' : '\u2014') + '\n' +
+        '\ud83d\udcfa Channel: ' + (c && c.channelId ? '<#' + c.channelId + '>' : '\u2014') + (c && c.locked ? ' \ud83d\udd12' : '') + '\n' +
         '\ud83d\udd0e Source: **' + ((c && c.source) || 'youtube') + '** \u00b7 Country: **' + ((c && c.country) || 'india') + '** \u00b7 Type: **' + ((c && c.type) || 'funny') + '**\n' +
         '\u23f1\ufe0f Har **' + everySecOf(c) + 's** me real search karke meme send\n' +
         '\ud83d\udce8 Sent: **' + st.sent + '**' +
@@ -540,13 +564,13 @@ export function attach(client) {
         st.lastAt = Date.now();
         st.lastTitle = m.title;
         stats.set(guildId, st);
-        console.log('memes: sent', m.kind, 'every', everySec + 's', String(m.title || '').slice(0, 60));
+        console.log('memes: sent', guildId, c.source + '/' + c.country + '/' + c.type, 'every', everySec + 's', String(m.title || '').slice(0, 60));
         touchPanel(guildId, c, false).catch(() => {});
       } catch (e) {
         console.error('meme send', e.message);
       }
     } else {
-      console.warn('memes: no result', c.source, c.country, c.type);
+      console.warn('memes: no result', guildId, c.source, c.country, c.type);
       const retry = Math.min(every, Math.max(3000, Math.floor(every * 0.25)));
       last.set(guildId, now - every + retry);
     }
@@ -555,9 +579,14 @@ export function attach(client) {
   async function postOnce(guildId, force) {
     if (busy.has(guildId)) return;
     busy.add(guildId);
+    let timer;
     try {
-      await postInner(guildId, force);
+      await Promise.race([
+        postInner(guildId, force),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('memes post timeout')), 40000); })
+      ]);
     } finally {
+      clearTimeout(timer);
       busy.delete(guildId);
     }
   }
@@ -575,6 +604,7 @@ export function attach(client) {
         const c = s.memes;
         const turnOn = i.customId === 'mm:on';
         if (turnOn) {
+          // Source / country / type / channel / lock ko haath nahi lagate — jo pehle set tha wahi chalega.
           if (!c.channelId) c.channelId = i.channelId;
           c.enabled = true;
           c.panelSec = 5;
@@ -698,6 +728,18 @@ export function attach(client) {
     }
   }
 
+  async function heartbeat() {
+    for (const g of client.guilds.cache.values()) {
+      try {
+        const s = await getSettings(g.id);
+        const c = s.memes;
+        if (c && c.enabled) {
+          console.log('memes: alive', g.id, c.source + '/' + c.country + '/' + c.type, 'every', everySecOf(c) + 's', 'busy=' + busy.has(g.id), 'sent=' + ((stats.get(g.id) || {}).sent || 0));
+        }
+      } catch {}
+    }
+  }
+
   let loopStarted = false;
   function startLoop() {
     if (loopStarted) return;
@@ -705,6 +747,7 @@ export function attach(client) {
     console.log('memes: auto-post loop started, guilds=', client.guilds.cache.size);
     setTimeout(tickAll, 3000);
     setInterval(tickAll, 1000);
+    setInterval(() => { heartbeat().catch(() => {}); }, 60000);
   }
   if (client.isReady()) startLoop();
   else client.once(Events.ClientReady, startLoop);

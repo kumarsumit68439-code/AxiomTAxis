@@ -22,29 +22,70 @@ if (!sb) {
 const cache = new Map();
 const TTL = 10000;
 
+// Safe saves: har object ka read-time snapshot (bases) rakhte hain, taaki save sirf wahi sections likhe
+// jo is handler ne badle, baaki (memes type/lock, ai channel, etc.) kabhi overwrite na ho.
+// failed = Supabase read fail hua tha; aise object ko save nahi karte (warna poori settings {} se wipe ho jaati).
+const bases = new WeakMap();
+const failed = new WeakSet();
+const snap = (d) => {
+  const o = {};
+  for (const k of Object.keys(d)) o[k] = JSON.stringify(d[k]);
+  return o;
+};
+
 export async function getSettings(gid) {
   const c = cache.get(gid);
   if (c && (!sb || Date.now() - c.t < TTL)) return c.d;
   let d = null;
   try {
     if (sb) {
-      const { data } = await sb.from('guild_settings').select('data').eq('guild_id', gid).maybeSingle();
+      const { data, error } = await sb.from('guild_settings').select('data').eq('guild_id', gid).maybeSingle();
+      if (error) throw new Error(error.message);
       d = data && data.data;
     } else d = local[gid];
   } catch (e) {
     console.error('getSettings', e.message);
-    if (c) return c.d;
+    if (c) {
+      c.t = Date.now() - TTL + 3000;
+      return c.d;
+    }
+    const tmp = {};
+    failed.add(tmp);
+    return tmp;
   }
   d = d || {};
+  bases.set(d, snap(d));
   cache.set(gid, { d, t: Date.now() });
   return d;
 }
 
 export async function saveSettings(gid, d) {
+  if (failed.has(d)) {
+    console.error('saveSettings skipped (settings read had failed)', gid);
+    return;
+  }
   cache.set(gid, { d, t: Date.now() });
   try {
-    if (sb) await sb.from('guild_settings').upsert({ guild_id: gid, data: d, updated_at: new Date().toISOString() });
-    else { local[gid] = d; fs.writeFileSync(file, JSON.stringify(local)); }
+    if (sb) {
+      let merged = d;
+      const base = bases.get(d);
+      if (base) {
+        const changed = Object.keys(d).filter((k) => JSON.stringify(d[k]) !== base[k]);
+        const removed = Object.keys(base).filter((k) => !(k in d));
+        const { data, error: rerr } = await sb.from('guild_settings').select('data').eq('guild_id', gid).maybeSingle();
+        if (rerr) throw new Error(rerr.message);
+        const latest = (data && data.data) || {};
+        merged = { ...latest };
+        for (const k of changed) merged[k] = d[k];
+        for (const k of removed) delete merged[k];
+        for (const k of Object.keys(merged)) {
+          if (!changed.includes(k)) d[k] = merged[k];
+        }
+      }
+      const { error } = await sb.from('guild_settings').upsert({ guild_id: gid, data: merged, updated_at: new Date().toISOString() });
+      if (error) throw new Error(error.message);
+      bases.set(d, snap(d));
+    } else { local[gid] = d; fs.writeFileSync(file, JSON.stringify(local)); }
   } catch (e) { console.error('saveSettings', e.message); }
 }
 
