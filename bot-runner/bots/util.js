@@ -22,11 +22,23 @@ if (!sb) {
 const cache = new Map();
 const TTL = 10000;
 
+// Memory fallback: agar Supabase read/write fail ho (jaise table missing), settings process memory me
+// rehti hain — pehle ye har 10 second me {} se reset ho jaati thi (memes type/enabled, AI channel gayab).
+const mem = new Map();
+
+// Error logs ko har minute me ek baar hi print karte hain (loop spam na ho).
+const logAt = new Map();
+function logOnce(tag, msg) {
+  const k = tag + msg;
+  const now = Date.now();
+  if (now - (logAt.get(k) || 0) < 60000) return;
+  logAt.set(k, now);
+  console.error(tag, msg);
+}
+
 // Safe saves: har object ka read-time snapshot (bases) rakhte hain, taaki save sirf wahi sections likhe
 // jo is handler ne badle, baaki (memes type/lock, ai channel, etc.) kabhi overwrite na ho.
-// failed = Supabase read fail hua tha; aise object ko save nahi karte (warna poori settings {} se wipe ho jaati).
 const bases = new WeakMap();
-const failed = new WeakSet();
 const snap = (d) => {
   const o = {};
   for (const k of Object.keys(d)) o[k] = JSON.stringify(d[k]);
@@ -44,27 +56,21 @@ export async function getSettings(gid) {
       d = data && data.data;
     } else d = local[gid];
   } catch (e) {
-    console.error('getSettings', e.message);
-    if (c) {
-      c.t = Date.now() - TTL + 3000;
-      return c.d;
-    }
-    const tmp = {};
-    failed.add(tmp);
-    return tmp;
+    logOnce('getSettings', e.message);
+    const keep = mem.get(gid) || (c && c.d) || {};
+    cache.set(gid, { d: keep, t: Date.now() });
+    return keep;
   }
-  d = d || {};
+  d = d || mem.get(gid) || {};
   bases.set(d, snap(d));
+  mem.set(gid, d);
   cache.set(gid, { d, t: Date.now() });
   return d;
 }
 
 export async function saveSettings(gid, d) {
-  if (failed.has(d)) {
-    console.error('saveSettings skipped (settings read had failed)', gid);
-    return;
-  }
   cache.set(gid, { d, t: Date.now() });
+  mem.set(gid, d);
   try {
     if (sb) {
       let merged = d;
@@ -86,7 +92,7 @@ export async function saveSettings(gid, d) {
       if (error) throw new Error(error.message);
       bases.set(d, snap(d));
     } else { local[gid] = d; fs.writeFileSync(file, JSON.stringify(local)); }
-  } catch (e) { console.error('saveSettings', e.message); }
+  } catch (e) { logOnce('saveSettings', e.message); }
 }
 
 // Send an embed to the server's log channel (Logging panel), if one is set.
