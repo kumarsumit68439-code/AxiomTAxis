@@ -1,11 +1,14 @@
-import { Events, EmbedBuilder, MessageFlags, ChannelType } from 'discord.js';
+import { Events, EmbedBuilder, MessageFlags, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } from 'discord.js';
+import play from 'play-dl';
 import { getSettings, saveSettings, MANAGE } from './util.js';
+
+const MIN_SEC = 5;
 
 export const commands = [
   { name: 'meme', description: 'Random meme', dm_permission: false },
   {
     name: 'memes',
-    description: 'Auto memes every N seconds (locked source/country/type)',
+    description: 'Auto memes every 5 seconds (locked source/country/type)',
     default_member_permissions: MANAGE,
     dm_permission: false,
     options: [
@@ -56,16 +59,17 @@ export const commands = [
           },
           {
             name: 'seconds',
-            description: 'Seconds between posts (default 20, min 15)',
+            description: 'Seconds between posts (default 5, min 5)',
             type: 4,
             required: false,
-            min_value: 15,
+            min_value: MIN_SEC,
             max_value: 3600
           }
         ]
       },
       { name: 'off', description: 'Stop auto memes', type: 1 },
-      { name: 'status', description: 'Show settings', type: 1 }
+      { name: 'status', description: 'Show settings', type: 1 },
+      { name: 'panel', description: 'Mini control panel — ON / OFF button', type: 1 }
     ]
   }
 ];
@@ -269,10 +273,22 @@ async function fromReddit(country, type) {
   return pick(out);
 }
 
-async function fromYouTube(country, type) {
-  const qs = (YT_Q[country] || YT_Q.global)[type] || YT_Q.global.any;
-  const extra = pick(['shorts', '2024', '2025', 'hindi', 'funny', 'video', 'meme', 'compilation', 'new']);
-  const q = pick(qs) + ' ' + extra;
+// Har search ke 20-25 results ek pool me rakhte hain, taaki 5 second ke gap pe
+// har baar search server pe load na pade. Pool khatam hote hi naya real search hota hai.
+const ytPool = new Map();
+
+function ytVid(id, title, q, thumb) {
+  return {
+    kind: 'youtube',
+    title: title || q,
+    url: 'https://www.youtube.com/watch?v=' + id,
+    key: id,
+    source: 'YouTube · ' + q,
+    thumb: typeof thumb === 'string' && thumb.startsWith('http') ? thumb : null
+  };
+}
+
+async function ytSearchPiped(q) {
   for (const base of ['https://api.piped.private.coffee/search?q=', 'https://pipedapi.adminforge.de/search?q=']) {
     try {
       const r = await fetch(base + encodeURIComponent(q) + '&filter=videos', {
@@ -287,27 +303,50 @@ async function fromYouTube(country, type) {
         if (v.type && v.type !== 'stream' && v.type !== 'video') continue;
         const id = extractYtId(v.url) || (typeof v.id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v.id) ? v.id : null);
         if (!id) continue;
-        vids.push({
-          kind: 'youtube',
-          title: v.title || q,
-          url: 'https://www.youtube.com/watch?v=' + id,
-          key: id,
-          source: 'YouTube · ' + q,
-          thumb: typeof v.thumbnail === 'string' ? v.thumbnail : null
-        });
+        vids.push(ytVid(id, v.title, q, v.thumbnail));
       }
-      if (vids.length) {
-        for (let i = vids.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [vids[i], vids[j]] = [vids[j], vids[i]];
-        }
-        return pick(vids.slice(0, Math.min(25, vids.length)));
-      }
+      if (vids.length) return vids;
     } catch (e) {
       console.warn('memes yt', e.message);
     }
   }
-  return null;
+  return [];
+}
+
+async function ytSearchPlay(q) {
+  try {
+    const found = await play.search(q, { limit: 20, source: { youtube: 'video' } });
+    const vids = [];
+    for (const v of found || []) {
+      const id = extractYtId(v.url) || (typeof v.id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(v.id) ? v.id : null);
+      if (!id) continue;
+      vids.push(ytVid(id, v.title, q, v.thumbnails && v.thumbnails[0] && v.thumbnails[0].url));
+    }
+    return vids;
+  } catch (e) {
+    console.warn('memes play-dl', e.message);
+    return [];
+  }
+}
+
+async function fromYouTube(country, type) {
+  const poolKey = country + ':' + type;
+  const pool = ytPool.get(poolKey);
+  if (pool && pool.length) return pool.shift();
+  const qs = (YT_Q[country] || YT_Q.global)[type] || YT_Q.global.any;
+  const extra = pick(['shorts', '2024', '2025', 'hindi', 'funny', 'video', 'meme', 'compilation', 'new']);
+  const q = pick(qs) + ' ' + extra;
+  let vids = await ytSearchPiped(q);
+  if (!vids.length) vids = await ytSearchPlay(q);
+  if (!vids.length) return null;
+  for (let i = vids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [vids[i], vids[j]] = [vids[j], vids[i]];
+  }
+  const list = vids.slice(0, Math.min(25, vids.length));
+  const first = list.shift();
+  ytPool.set(poolKey, list);
+  return first;
 }
 
 async function fromGoogle(country, type) {
@@ -418,20 +457,68 @@ async function sendMeme(channel, m) {
   return true;
 }
 
+// Panel ON dabane par panelSec=5 save hota hai (schema ke bahar ka key hai, isliye
+// dashboard Save isse 15 par clamp nahi karta). Nahi mila to intervalSec / intervalMin, warna 5s.
+function everySecOf(c) {
+  let sec = Number(c && c.panelSec);
+  if (!sec || sec < MIN_SEC) {
+    sec = Number(c && c.intervalSec);
+    if (!sec || sec < MIN_SEC) {
+      const min = Number(c && c.intervalMin);
+      sec = min && min >= 1 ? min * 60 : MIN_SEC;
+    }
+  }
+  return Math.max(MIN_SEC, Math.min(3600, sec));
+}
+
 export function attach(client) {
   const last = new Map();
   const usedMap = new Map();
+  const busy = new Set();
+  const stats = new Map();
+  const panels = new Map();
+  const panelAt = new Map();
 
-  async function postOnce(guildId, force) {
+  function panelPayload(guildId, c) {
+    const on = !!(c && c.enabled && c.channelId);
+    const st = stats.get(guildId) || { sent: 0 };
+    const e = new EmbedBuilder()
+      .setColor(on ? 0x22c55e : 0x6b7280)
+      .setAuthor({ name: 'Auto Memes \u00b7 Mini Panel \u00b7 ' + (on ? 'ON' : 'OFF') })
+      .setTitle(on ? '\ud83d\udfe2 Memes automatically ja rahe hain' : '\ud83d\udd34 Memes band hain')
+      .setDescription(
+        '\ud83d\udcfa Channel: ' + (c && c.channelId ? '<#' + c.channelId + '>' : '\u2014') + '\n' +
+        '\ud83d\udd0e Source: **' + ((c && c.source) || 'youtube') + '** \u00b7 Country: **' + ((c && c.country) || 'india') + '** \u00b7 Type: **' + ((c && c.type) || 'funny') + '**\n' +
+        '\u23f1\ufe0f Har **' + everySecOf(c) + 's** me real search karke meme send\n' +
+        '\ud83d\udce8 Sent: **' + st.sent + '**' +
+        (st.lastAt ? '\n\ud83d\udd52 Last: <t:' + Math.floor(st.lastAt / 1000) + ':R> \u00b7 ' + String(st.lastTitle || '').slice(0, 80) : '')
+      )
+      .setFooter({ text: 'ON / OFF button dabao \u2014 command ki zarurat nahi' });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('mm:on').setEmoji('\ud83d\udfe2').setLabel('ON').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('mm:off').setEmoji('\ud83d\udd34').setLabel('OFF').setStyle(ButtonStyle.Danger)
+    );
+    return { embeds: [e], components: [row] };
+  }
+
+  async function touchPanel(guildId, c, force) {
+    const msg = panels.get(guildId);
+    if (!msg) return;
+    const now = Date.now();
+    if (!force && now - (panelAt.get(guildId) || 0) < 15000) return;
+    panelAt.set(guildId, now);
+    try {
+      await msg.edit(panelPayload(guildId, c));
+    } catch {
+      panels.delete(guildId);
+    }
+  }
+
+  async function postInner(guildId, force) {
     const s = await getSettings(guildId);
     const c = s.memes;
     if (!c || !c.enabled || !c.channelId) return;
-    let everySec = Number(c.intervalSec);
-    if (!everySec || everySec < 15) {
-      const min = Number(c.intervalMin);
-      everySec = min && min >= 1 ? Math.max(15, Math.min(3600, min * 60)) : 20;
-    }
-    everySec = Math.max(15, Math.min(3600, everySec));
+    const everySec = everySecOf(c);
     const every = everySec * 1000;
     const now = Date.now();
     if (!force && last.has(guildId) && now - last.get(guildId) < every) return;
@@ -443,24 +530,68 @@ export function attach(client) {
       return;
     }
     if (!usedMap.has(guildId)) usedMap.set(guildId, new Set());
-    console.log('memes: fetching', guildId, c.source, c.country, c.type, 'every', everySec + 's');
+    last.set(guildId, now);
     const m = await getMeme(c, usedMap.get(guildId));
     if (m) {
       try {
         await sendMeme(ch, m);
-        last.set(guildId, now);
-        console.log('memes: sent', m.kind, String(m.title || '').slice(0, 60));
+        const st = stats.get(guildId) || { sent: 0 };
+        st.sent += 1;
+        st.lastAt = Date.now();
+        st.lastTitle = m.title;
+        stats.set(guildId, st);
+        console.log('memes: sent', m.kind, 'every', everySec + 's', String(m.title || '').slice(0, 60));
+        touchPanel(guildId, c, false).catch(() => {});
       } catch (e) {
         console.error('meme send', e.message);
       }
     } else {
       console.warn('memes: no result', c.source, c.country, c.type);
-      last.set(guildId, now - Math.floor(every * 0.75));
+      const retry = Math.min(every, Math.max(3000, Math.floor(every * 0.25)));
+      last.set(guildId, now - every + retry);
+    }
+  }
+
+  async function postOnce(guildId, force) {
+    if (busy.has(guildId)) return;
+    busy.add(guildId);
+    try {
+      await postInner(guildId, force);
+    } finally {
+      busy.delete(guildId);
     }
   }
 
   client.on(Events.InteractionCreate, async (i) => {
     try {
+      if (i.isButton() && i.customId.startsWith('mm:')) {
+        if (!i.inGuild()) return;
+        if (!i.memberPermissions || !i.memberPermissions.has(PermissionFlagsBits.ManageGuild)) {
+          return i.reply({ content: 'Sirf Manage Server permission wale is panel ko use kar sakte hain.', flags: MessageFlags.Ephemeral });
+        }
+        await i.deferUpdate();
+        const s = await getSettings(i.guildId);
+        s.memes = s.memes || {};
+        const c = s.memes;
+        const turnOn = i.customId === 'mm:on';
+        if (turnOn) {
+          if (!c.channelId) c.channelId = i.channelId;
+          c.enabled = true;
+          c.panelSec = 5;
+          c.source = c.source || 'youtube';
+          c.country = c.country || 'india';
+          c.type = c.type || 'funny';
+          last.delete(i.guildId);
+        } else {
+          c.enabled = false;
+        }
+        await saveSettings(i.guildId, s);
+        panels.set(i.guildId, i.message);
+        panelAt.set(i.guildId, Date.now());
+        await i.editReply(panelPayload(i.guildId, c));
+        if (turnOn) postOnce(i.guildId, true).catch((e) => console.error('meme first', e.message));
+        return;
+      }
       if (i.isChatInputCommand() && i.commandName === 'meme') {
         await i.deferReply();
         const m = await getMeme({ source: 'all', country: 'global', type: 'any' }, new Set());
@@ -493,14 +624,15 @@ export function attach(client) {
         const source = i.options.getString('source', true);
         const country = i.options.getString('country', true);
         const type = i.options.getString('type', true);
-        const seconds = i.options.getInteger('seconds') || 20;
+        const seconds = Math.max(MIN_SEC, Math.min(3600, i.options.getInteger('seconds') || MIN_SEC));
         s.memes = {
           enabled: true,
           channelId: ch.id,
           source,
           country,
           type,
-          intervalSec: Math.max(15, Math.min(3600, seconds)),
+          intervalSec: Math.max(15, seconds),
+          panelSec: seconds,
           locked: true
         };
         await saveSettings(i.guildId, s);
@@ -510,16 +642,35 @@ export function attach(client) {
           content:
             'Auto memes **ON** ' + ch + ' *(channel locked)*\n' +
             'Source: **' + source + '** \u00b7 Country: **' + country + '** \u00b7 Type: **' + type + '**\n' +
-            'Every **' + s.memes.intervalSec + 's** (unique, repeating) \u2014 posting now\u2026\n' +
+            'Every **' + seconds + 's** (unique, repeating) \u2014 posting now\u2026\n' +
             '_Channel change sirf website se hoga._',
           flags: MessageFlags.Ephemeral
         });
+        try {
+          const msg = await ch.send(panelPayload(i.guildId, s.memes));
+          panels.set(i.guildId, msg);
+          panelAt.set(i.guildId, Date.now());
+        } catch (e) {
+          console.warn('memes panel send', e.message);
+        }
         postOnce(i.guildId, true).catch((e) => console.error('meme first', e.message));
         return;
+      }
+      if (sub === 'panel') {
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        try {
+          const msg = await i.channel.send(panelPayload(i.guildId, s.memes));
+          panels.set(i.guildId, msg);
+          panelAt.set(i.guildId, Date.now());
+          return i.editReply({ content: 'Mini panel bhej diya. **ON** dabao \u2014 phir har 5 second me memes apne aap aayenge.' });
+        } catch (e) {
+          return i.editReply({ content: 'Panel nahi bheja ja saka: bot ko is channel me Send Messages + Embed Links do.' });
+        }
       }
       if (sub === 'off') {
         s.memes.enabled = false;
         await saveSettings(i.guildId, s);
+        touchPanel(i.guildId, s.memes, true).catch(() => {});
         return i.reply({ content: 'Auto memes off.', flags: MessageFlags.Ephemeral });
       }
       if (sub === 'status') {
@@ -532,7 +683,7 @@ export function attach(client) {
             '\nSource: **' + ((c && c.source) || '\u2014') + '**' +
             '\nCountry: **' + ((c && c.country) || '\u2014') + '**' +
             '\nType: **' + ((c && c.type) || '\u2014') + '**' +
-            '\nInterval: ' + ((c && c.intervalSec) || 20) + 's',
+            '\nInterval: ' + everySecOf(c) + 's',
           flags: MessageFlags.Ephemeral
         });
       }
@@ -541,9 +692,9 @@ export function attach(client) {
     }
   });
 
-  async function tickAll() {
+  function tickAll() {
     for (const g of client.guilds.cache.values()) {
-      try { await postOnce(g.id, false); } catch (e) { console.error('memes tick', g.id, e.message); }
+      postOnce(g.id, false).catch((e) => console.error('memes tick', g.id, e.message));
     }
   }
 
@@ -552,8 +703,8 @@ export function attach(client) {
     if (loopStarted) return;
     loopStarted = true;
     console.log('memes: auto-post loop started, guilds=', client.guilds.cache.size);
-    setTimeout(() => { tickAll().catch(() => {}); }, 3000);
-    setInterval(() => { tickAll().catch(() => {}); }, 8000);
+    setTimeout(tickAll, 3000);
+    setInterval(tickAll, 1000);
   }
   if (client.isReady()) startLoop();
   else client.once(Events.ClientReady, startLoop);
